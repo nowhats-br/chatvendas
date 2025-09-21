@@ -1,0 +1,53 @@
+{
+  "name": "vite-react-typescript-starter",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "lint": "eslint .",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@faker-js/faker": "^10.0.0",
+    "@headlessui/react": "^2.2.8",
+    "@hello-pangea/dnd": "^18.0.1",
+    "@supabase/supabase-js": "^2.57.4",
+    "@types/sortablejs": "^1.15.8",
+    "@types/uuid": "^11.0.0",
+    "axios": "^1.9.0",
+    "date-fns": "^4.1.0",
+    "framer-motion": "^12.23.16",
+    "lucide-react": "^0.511.0",
+    "react": "^19.1.0",
+    "react-beautiful-dnd": "^13.1.1",
+    "react-dom": "^19.1.0",
+    "react-dropzone": "^14.3.8",
+    "react-hot-toast": "^2.6.0",
+    "react-is": "^19.1.1",
+    "react-router-dom": "^7.9.1",
+    "react-sortablejs": "^6.1.4",
+    "reactflow": "^11.11.4",
+    "recharts": "^3.2.1",
+    "sortablejs": "^1.15.6",
+    "uuid": "^13.0.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.27.0",
+    "@tailwindcss/forms": "^0.5.10",
+    "@types/react": "^19.1.5",
+    "@types/react-dom": "^19.1.5",
+    "@vitejs/plugin-react": "^4.5.0",
+    "autoprefixer": "^10.4.21",
+    "eslint": "^9.27.0",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "eslint-plugin-react-refresh": "^0.4.20",
+    "globals": "^16.2.0",
+    "postcss": "^8.4.35",
+    "tailwindcss": "^3.4.1",
+    "typescript": "^5.8.3",
+    "typescript-eslint": "^8.32.1",
+    "vite": "^6.3.5"
+  }
+}
