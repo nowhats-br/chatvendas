@@ -62,6 +62,7 @@ export interface Ticket {
   contact?: Contact;
   user?: Profile;
   queue?: Queue;
+  messages?: Message[];
 }
 
 export interface Message {
@@ -90,11 +91,26 @@ export interface Queue {
   description?: string;
   color: string;
   is_active: boolean;
-  auto_assign: boolean;
-  max_concurrent_tickets: number;
-  business_hours: Record<string, any>;
   created_at: string;
   updated_at: string;
+}
+
+export interface Team {
+  id: string;
+  name: string;
+  description?: string;
+  leader_id?: string;
+  created_at: string;
+  updated_at: string;
+  leader?: Profile;
+  team_members?: TeamMember[];
+}
+
+export interface TeamMember {
+  team_id: string;
+  user_id: string;
+  created_at: string;
+  user?: Profile;
 }
 
 export interface Campaign {
@@ -166,4 +182,49 @@ export interface SaleItem {
   quantity: number;
   unit_price: number;
   product?: Product;
+}
+
+export interface Task {
+  id: string;
+  user_id: string;
+  contact_id?: string;
+  title: string;
+  description?: string;
+  due_date?: string;
+  priority: 'low' | 'normal' | 'high' | 'urgent';
+  status: 'todo' | 'in_progress' | 'done';
+  assigned_to?: string;
+  created_at: string;
+  updated_at: string;
+  contact?: Contact;
+  assignee?: Profile;
+}
+
+export interface Tag {
+  id: string;
+  name: string;
+  color: string;
+  user_id: string;
+  is_global: boolean;
+  created_at: string;
+}
+
+export interface InternalChannel {
+  id: string;
+  name: string;
+  description?: string;
+  channel_type: 'public' | 'private' | 'direct';
+  created_by: string;
+  created_at: string;
+  members?: Profile[];
+  last_message?: InternalMessage;
+}
+
+export interface InternalMessage {
+  id: string;
+  channel_id: string;
+  user_id: string;
+  content: string;
+  created_at: string;
+  user?: Profile;
 }
