@@ -12,7 +12,7 @@ export const useAuth = () => {
         id: '1',
         name: 'Admin User',
         email: 'admin@whazing.com',
-        avatar: 'https://img-wrapper.vercel.app/image?url=https://placehold.co/40x40/059669/ffffff?text=AU',
+        avatar: 'https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://placehold.co/40x40/059669/ffffff?text=AU',
         plan: 'premium',
         isOnline: true,
       });
@@ -28,7 +28,7 @@ export const useAuth = () => {
         id: '1',
         name: 'Admin User',
         email: email,
-        avatar: 'https://img-wrapper.vercel.app/image?url=https://placehold.co/40x40/059669/ffffff?text=AU',
+        avatar: 'https://img-wrapper.vercel.app/image?url=https://img-wrapper.vercel.app/image?url=https://placehold.co/40x40/059669/ffffff?text=AU',
         plan: 'premium',
         isOnline: true,
       });
