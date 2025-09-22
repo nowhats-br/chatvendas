@@ -3,6 +3,7 @@ import { supabase, WhatsAppConnection } from '../../lib/supabase';
 import { Plus, CheckCircle, XCircle, Loader2, Trash2, Power } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { AddConnectionModal } from './AddConnectionModal';
+import { whatsappService } from '../../lib/whatsapp-service';
 
 export const WhatsAppConnections: React.FC = () => {
   const [connections, setConnections] = useState<WhatsAppConnection[]>([]);
@@ -11,6 +12,23 @@ export const WhatsAppConnections: React.FC = () => {
 
   useEffect(() => {
     fetchConnections();
+    
+    // Configurar listeners para atualizações de status
+    const handleConnectionStatus = (data: any) => {
+      setConnections(prev => 
+        prev.map(conn => 
+          conn.id === data.connectionId 
+            ? { ...conn, status: data.status, phone_number: data.phoneNumber || conn.phone_number }
+            : conn
+        )
+      );
+    };
+
+    whatsappService.on('connection_status', handleConnectionStatus);
+
+    return () => {
+      whatsappService.off('connection_status', handleConnectionStatus);
+    };
   }, []);
 
   const fetchConnections = async () => {
@@ -28,13 +46,58 @@ export const WhatsAppConnections: React.FC = () => {
 
   const handleDelete = async (id: string) => {
     if (!window.confirm("Tem certeza que deseja remover esta conexão?")) return;
+    
     try {
+      const connection = connections.find(c => c.id === id);
+      if (connection) {
+        // Desconectar do serviço antes de remover
+        whatsappService.disconnectConnection(connection.api_provider, id);
+      }
+      
       const { error } = await supabase.from('whatsapp_connections').delete().eq('id', id);
       if (error) throw error;
+      
       toast.success("Conexão removida!");
       fetchConnections();
     } catch (err) {
       toast.error("Erro ao remover conexão.");
+    }
+  };
+
+  const handleToggleConnection = async (connection: WhatsAppConnection) => {
+    try {
+      if (connection.status === 'connected') {
+        // Desconectar
+        whatsappService.disconnectConnection(connection.api_provider, connection.id);
+        
+        await supabase
+          .from('whatsapp_connections')
+          .update({ status: 'disconnected' })
+          .eq('id', connection.id);
+          
+        toast.success("Conexão desconectada!");
+      } else {
+        // Conectar
+        const isServiceHealthy = await whatsappService.checkServiceHealth(connection.api_provider);
+        if (!isServiceHealthy) {
+          toast.error(`Serviço ${connection.api_provider} não está disponível.`);
+          return;
+        }
+        
+        whatsappService.connect(connection.api_provider);
+        whatsappService.createConnection(connection.api_provider, connection.id);
+        
+        await supabase
+          .from('whatsapp_connections')
+          .update({ status: 'connecting' })
+          .eq('id', connection.id);
+          
+        toast.success("Iniciando conexão...");
+      }
+      
+      fetchConnections();
+    } catch (err) {
+      toast.error("Erro ao alterar status da conexão.");
     }
   };
 
@@ -111,11 +174,21 @@ export const WhatsAppConnections: React.FC = () => {
                     </div>
                   </div>
                   <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700 flex justify-end space-x-2">
-                    <button className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center space-x-2">
+                    <button 
+                      onClick={() => handleToggleConnection(conn)}
+                      disabled={conn.status === 'connecting'}
+                      className="px-3 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
                       <Power size={14} />
-                      <span>{conn.status === 'connected' ? 'Desconectar' : 'Conectar'}</span>
+                      <span>
+                        {conn.status === 'connecting' ? 'Conectando...' :
+                         conn.status === 'connected' ? 'Desconectar' : 'Conectar'}
+                      </span>
                     </button>
-                    <button onClick={() => handleDelete(conn.id)} className="px-3 py-1 text-sm border border-red-300 text-red-600 rounded-md hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-900/50 flex items-center space-x-2">
+                    <button 
+                      onClick={() => handleDelete(conn.id)} 
+                      className="px-3 py-1 text-sm border border-red-300 text-red-600 rounded-md hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-900/50 flex items-center space-x-2"
+                    >
                       <Trash2 size={14} />
                       <span>Remover</span>
                     </button>

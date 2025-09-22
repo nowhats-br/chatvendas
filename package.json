@@ -30,6 +30,7 @@
     "react-sortablejs": "^6.1.4",
     "reactflow": "^11.11.4",
     "recharts": "^3.2.1",
+    "socket.io-client": "^4.7.4",
     "sortablejs": "^1.15.6",
     "uuid": "^13.0.0"
   },
