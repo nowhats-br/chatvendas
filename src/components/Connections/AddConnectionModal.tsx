@@ -3,8 +3,6 @@ import { supabase, WhatsAppConnection } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { X, Loader2, Save, ArrowRight, Server, Smartphone } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { useWhatsAppConnection } from '../../hooks/useWhatsAppConnection';
-import { QRCodeDisplay } from './QRCodeDisplay';
 
 interface AddConnectionModalProps {
   isOpen: boolean;
@@ -19,19 +17,8 @@ export const AddConnectionModal: React.FC<AddConnectionModalProps> = ({ isOpen, 
   const [name, setName] = useState('');
   const [apiProvider, setApiProvider] = useState<ApiProvider>('baileys');
   const [loading, setLoading] = useState(false);
-  const [connectionId, setConnectionId] = useState<string | null>(null);
+  const [qrCode, setQrCode] = useState<string | null>(null);
   const { user } = useAuth();
-  
-  // Hook para gerenciar conexões WhatsApp
-  const {
-    qrCode,
-    connectionStatus,
-    isConnecting,
-    error,
-    createConnection,
-    disconnectConnection,
-    clearQRCode
-  } = useWhatsAppConnection();
 
   const handleNextStep = async () => {
     if (!name) {
@@ -39,7 +26,8 @@ export const AddConnectionModal: React.FC<AddConnectionModalProps> = ({ isOpen, 
       return;
     }
     setLoading(true);
-    
+    // In a real scenario, you would call your backend here to generate a QR code
+    // For now, we'll simulate it and move to the next step.
     try {
       const { data, error } = await supabase
         .from('whatsapp_connections')
@@ -54,9 +42,8 @@ export const AddConnectionModal: React.FC<AddConnectionModalProps> = ({ isOpen, 
       
       if (error) throw error;
       
-      // Armazenar o ID da conexão e criar conexão real
-      setConnectionId(data.id);
-      createConnection(apiProvider, data.id);
+      // Simulate QR code generation
+      setQrCode(`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=connId:${data.id}`);
       setStep(2);
 
     } catch (err: any) {
@@ -67,36 +54,16 @@ export const AddConnectionModal: React.FC<AddConnectionModalProps> = ({ isOpen, 
   };
 
   const handleClose = () => {
-    // Desconectar se houver uma conexão ativa
-    if (connectionId) {
-      disconnectConnection(connectionId);
-    }
-    
     setStep(1);
     setName('');
-    setConnectionId(null);
-    clearQRCode();
+    setQrCode(null);
     onClose();
   };
   
-  const handleComplete = async () => {
-    if (!connectionId) return;
-    
-    try {
-      // Atualizar status da conexão no banco
-      const { error } = await supabase
-        .from('whatsapp_connections')
-        .update({ status: 'connected' })
-        .eq('id', connectionId);
-      
-      if (error) throw error;
-      
-      toast.success("Conexão estabelecida com sucesso!");
-      onSuccess();
-      handleClose();
-    } catch (err: any) {
-      toast.error(err.message || "Erro ao finalizar conexão.");
-    }
+  const handleFinish = () => {
+    toast.success("Conexão adicionada! Aguardando leitura do QR Code.");
+    onSuccess();
+    handleClose();
   };
 
   if (!isOpen) return null;
@@ -153,25 +120,19 @@ export const AddConnectionModal: React.FC<AddConnectionModalProps> = ({ isOpen, 
         )}
 
         {step === 2 && (
-          <div className="p-6">
-            <div className="space-y-6">
-              <div className="text-center">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
-                  Conectar WhatsApp
-                </h3>
-                <p className="text-sm text-gray-600 dark:text-gray-300">
-                  Escaneie o QR Code com seu WhatsApp para conectar
-                </p>
-              </div>
-
-              <QRCodeDisplay
-                qrCode={qrCode}
-                status={connectionStatus}
-                isConnecting={isConnecting}
-                error={error}
-                onRetry={() => connectionId && createConnection(apiProvider, connectionId)}
-                onComplete={handleComplete}
-              />
+          <div className="p-6 text-center">
+            <p className="text-gray-600 dark:text-gray-300 mb-4">Abra o WhatsApp no seu celular, vá para **Aparelhos conectados** e escaneie o QR Code abaixo.</p>
+            <div className="flex justify-center items-center bg-gray-100 dark:bg-gray-700 rounded-lg p-4 mb-6 h-64">
+              {qrCode ? (
+                <img src={qrCode} alt="QR Code" className="w-56 h-56" />
+              ) : (
+                <Loader2 className="w-12 h-12 animate-spin text-green-500" />
+              )}
+            </div>
+            <div className="flex justify-end">
+              <button onClick={handleFinish} className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+                Concluir
+              </button>
             </div>
           </div>
         )}
