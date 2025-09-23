@@ -165,13 +165,26 @@ export const AddConnectionModal: React.FC<AddConnectionModalProps> = ({ isOpen, 
               </div>
 
               <QRCodeDisplay
-                qrCode={qrCode}
-                status={connectionStatus}
+                qrCodeData={qrCode}
+                provider={apiProvider}
+                connectionStatus={connectionStatus?.status}
                 isConnecting={isConnecting}
                 error={error}
                 onRetry={() => connectionId && createConnection(apiProvider, connectionId)}
-                onComplete={handleComplete}
               />
+
+              {/* Botão de finalizar quando conectado */}
+              {connectionStatus?.status === 'connected' && (
+                <div className="flex justify-center">
+                  <button
+                    onClick={handleComplete}
+                    className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center space-x-2"
+                  >
+                    <Save size={18} />
+                    <span>Finalizar Conexão</span>
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         )}
