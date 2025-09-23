@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { supabase, WhatsAppConnection } from '../../lib/supabase';
+import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { X, Loader2, Save, ArrowRight, Server, Smartphone } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -34,20 +34,26 @@ export const AddConnectionModal: React.FC<AddConnectionModalProps> = ({ isOpen, 
   } = useWhatsAppConnection();
 
   const handleNextStep = async () => {
-    if (!name) {
+    if (!name.trim()) {
       toast.error("O nome da conexão é obrigatório.");
       return;
     }
+    
+    if (!user?.id) {
+      toast.error("Usuário não autenticado.");
+      return;
+    }
+    
     setLoading(true);
     
     try {
       const { data, error } = await supabase
         .from('whatsapp_connections')
         .insert({
-          name,
+          name: name.trim(),
           api_provider: apiProvider,
           status: 'connecting',
-          created_by: user!.id
+          created_by: user.id
         })
         .select()
         .single();
@@ -56,7 +62,7 @@ export const AddConnectionModal: React.FC<AddConnectionModalProps> = ({ isOpen, 
       
       // Armazenar o ID da conexão e criar conexão real
       setConnectionId(data.id);
-      createConnection(apiProvider, data.id);
+      await createConnection(apiProvider, data.id);
       setStep(2);
 
     } catch (err: any) {
@@ -72,21 +78,31 @@ export const AddConnectionModal: React.FC<AddConnectionModalProps> = ({ isOpen, 
       disconnectConnection(connectionId);
     }
     
+    // Reset do estado
     setStep(1);
     setName('');
+    setApiProvider('baileys');
     setConnectionId(null);
     clearQRCode();
     onClose();
   };
   
   const handleComplete = async () => {
-    if (!connectionId) return;
+    if (!connectionId) {
+      toast.error("ID da conexão não encontrado.");
+      return;
+    }
+    
+    setLoading(true);
     
     try {
       // Atualizar status da conexão no banco
       const { error } = await supabase
         .from('whatsapp_connections')
-        .update({ status: 'connected' })
+        .update({ 
+          status: 'connected',
+          connected_at: new Date().toISOString()
+        })
         .eq('id', connectionId);
       
       if (error) throw error;
@@ -96,6 +112,8 @@ export const AddConnectionModal: React.FC<AddConnectionModalProps> = ({ isOpen, 
       handleClose();
     } catch (err: any) {
       toast.error(err.message || "Erro ao finalizar conexão.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -144,9 +162,13 @@ export const AddConnectionModal: React.FC<AddConnectionModalProps> = ({ isOpen, 
               </div>
             </div>
             <div className="flex justify-end">
-              <button onClick={handleNextStep} disabled={loading} className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center space-x-2 disabled:opacity-50">
+              <button 
+                onClick={handleNextStep} 
+                disabled={loading || !name.trim()} 
+                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+              >
                 {loading ? <Loader2 size={18} className="animate-spin" /> : <ArrowRight size={18} />}
-                <span>Avançar</span>
+                <span>{loading ? 'Criando...' : 'Avançar'}</span>
               </button>
             </div>
           </div>
@@ -178,10 +200,11 @@ export const AddConnectionModal: React.FC<AddConnectionModalProps> = ({ isOpen, 
                 <div className="flex justify-center">
                   <button
                     onClick={handleComplete}
-                    className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center space-x-2"
+                    disabled={loading}
+                    className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
                   >
-                    <Save size={18} />
-                    <span>Finalizar Conexão</span>
+                    {loading ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
+                    <span>{loading ? 'Finalizando...' : 'Finalizar Conexão'}</span>
                   </button>
                 </div>
               )}
