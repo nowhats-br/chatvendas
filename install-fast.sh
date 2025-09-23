@@ -117,8 +117,29 @@ cd /opt/chatvendas
 # Garantir permissões corretas antes do build
 chown -R chatvendas:chatvendas /opt/chatvendas
 chmod -R 755 /opt/chatvendas
-# Limpar cache do Vite se existir
+
+# Executar verificação de integridade do Vite
+if [ -f "scripts/vite-health-check.sh" ]; then
+    log "Executando verificação de integridade do Vite..."
+    chmod +x scripts/vite-health-check.sh
+    if ! ./scripts/vite-health-check.sh /opt/chatvendas chatvendas; then
+        log "Verificação de integridade falhou - aplicando correções manuais..."
+    fi
+fi
+
+# Limpeza robusta de cache do Vite
+log "Limpando cache do Vite..."
 sudo -u chatvendas rm -rf node_modules/.vite 2>/dev/null || true
+sudo -u chatvendas rm -rf dist 2>/dev/null || true
+sudo -u chatvendas find . -name "*.timestamp-*.mjs" -delete 2>/dev/null || true
+
+# Verificar se o Vite está acessível
+if ! sudo -u chatvendas npx vite --version >/dev/null 2>&1; then
+    log "Reinstalando dependências devido a problema com Vite..."
+    sudo -u chatvendas npm cache clean --force 2>/dev/null || true
+    sudo -u chatvendas npm install --legacy-peer-deps
+fi
+
 sudo -u chatvendas npm run build
 
 # Configurar .env files rapidamente
