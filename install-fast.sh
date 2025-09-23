@@ -111,6 +111,11 @@ log "Instalando dependências (paralelo + cache)..."
 wait
 log "Dependências instaladas!"
 
+# Build do frontend
+log "Fazendo build do frontend..."
+cd /opt/chatvendas
+sudo -u chatvendas npm run build
+
 # Configurar .env files rapidamente
 log "Configurando variáveis de ambiente..."
 

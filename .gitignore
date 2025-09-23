@@ -1,1 +1,38 @@
 node_modules/
+
+# WhatsApp Web.js authentication files
+server/webjs-service/.wwebjs_auth/
+
+# Baileys authentication files  
+server/baileys-service/auth_info_baileys*/
+
+# Environment files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage directory used by tools like istanbul
+coverage/
+
+# Build outputs
+dist/
+build/
+
+# Temporary folders
+tmp/
+temp/
