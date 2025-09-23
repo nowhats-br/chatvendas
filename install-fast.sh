@@ -114,6 +114,11 @@ log "Dependências instaladas!"
 # Build do frontend
 log "Fazendo build do frontend..."
 cd /opt/chatvendas
+# Garantir permissões corretas antes do build
+chown -R chatvendas:chatvendas /opt/chatvendas
+chmod -R 755 /opt/chatvendas
+# Limpar cache do Vite se existir
+sudo -u chatvendas rm -rf node_modules/.vite 2>/dev/null || true
 sudo -u chatvendas npm run build
 
 # Configurar .env files rapidamente

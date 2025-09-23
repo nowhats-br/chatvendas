@@ -352,6 +352,11 @@ if skip_if_completed "frontend_build"; then
 else
     log "Fazendo build do frontend..."
     cd /opt/chatvendas
+    # Garantir permissões corretas antes do build
+    sudo chown -R chatvendas:chatvendas /opt/chatvendas
+    sudo chmod -R 755 /opt/chatvendas
+    # Limpar cache do Vite se existir
+    sudo -u chatvendas rm -rf node_modules/.vite 2>/dev/null || true
     sudo -u chatvendas npm run build
     mark_checkpoint "frontend_build"
 fi
