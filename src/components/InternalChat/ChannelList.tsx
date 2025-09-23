@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { InternalChannel, Profile, supabase } from '../../lib/supabase';
 import { Loader2, Hash, Lock, User, Plus, X } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
@@ -53,19 +53,41 @@ const NewChannelModal: React.FC<{ isOpen: boolean, onClose: () => void, onSucces
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [type, setType] = useState<'public' | 'private'>('public');
+  const [allUsers, setAllUsers] = useState<Profile[]>([]);
+  const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const { user } = useAuth();
+
+  useEffect(() => {
+    if (isOpen) {
+      const fetchUsers = async () => {
+        const { data, error } = await supabase.from('profiles').select('id, name, avatar_url');
+        if (error) toast.error("Erro ao carregar usuários.");
+        else setAllUsers(data || []);
+      };
+      fetchUsers();
+    }
+  }, [isOpen]);
+
+  const handleUserToggle = (userId: string) => {
+    setSelectedUsers(prev =>
+      prev.includes(userId) ? prev.filter(id => id !== userId) : [...prev, userId]
+    );
+  };
 
   const handleCreate = async () => {
     if (!name.trim() || !user) return;
     setLoading(true);
     try {
-      const { data, error } = await supabase.from('internal_channels').insert({ name, description, channel_type: type, created_by: user.id }).select().single();
+      const { data: channelData, error } = await supabase.from('internal_channels').insert({ name, description, channel_type: type, created_by: user.id }).select().single();
       if (error) throw error;
       
-      // If private, add creator as member
       if (type === 'private') {
-        await supabase.from('internal_channel_members').insert({ channel_id: data.id, user_id: user.id });
+        const membersToInsert = [...new Set([user.id, ...selectedUsers])].map(memberId => ({
+          channel_id: channelData.id,
+          user_id: memberId,
+        }));
+        await supabase.from('internal_channel_members').insert(membersToInsert);
       }
 
       toast.success("Canal criado com sucesso!");
@@ -87,18 +109,32 @@ const NewChannelModal: React.FC<{ isOpen: boolean, onClose: () => void, onSucces
           <h2 className="text-lg font-semibold">Novo Canal</h2>
           <button onClick={onClose}><X size={20} /></button>
         </div>
-        <div className="p-6 space-y-4">
-          <input type="text" placeholder="Nome do canal" value={name} onChange={e => setName(e.target.value)} className="w-full p-2 border rounded bg-transparent" />
-          <input type="text" placeholder="Descrição (opcional)" value={description} onChange={e => setDescription(e.target.value)} className="w-full p-2 border rounded bg-transparent" />
+        <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
+          <input type="text" placeholder="Nome do canal" value={name} onChange={e => setName(e.target.value)} className="w-full p-2 border rounded bg-transparent dark:border-gray-600" />
+          <input type="text" placeholder="Descrição (opcional)" value={description} onChange={e => setDescription(e.target.value)} className="w-full p-2 border rounded bg-transparent dark:border-gray-600" />
           <div className="flex space-x-4">
-            <label><input type="radio" name="type" value="public" checked={type === 'public'} onChange={() => setType('public')} /> Público</label>
-            <label><input type="radio" name="type" value="private" checked={type === 'private'} onChange={() => setType('private')} /> Privado</label>
+            <label className="flex items-center space-x-2"><input type="radio" name="type" value="public" checked={type === 'public'} onChange={() => setType('public')} className="text-green-600 focus:ring-green-500"/> <span>Público</span></label>
+            <label className="flex items-center space-x-2"><input type="radio" name="type" value="private" checked={type === 'private'} onChange={() => setType('private')} className="text-green-600 focus:ring-green-500"/> <span>Privado (Equipe)</span></label>
           </div>
+          {type === 'private' && (
+            <div>
+              <label className="block text-sm font-medium mb-2">Adicionar Membros</label>
+              <div className="space-y-2 max-h-48 overflow-y-auto border dark:border-gray-600 rounded-lg p-2">
+                {allUsers.filter(u => u.id !== user?.id).map(u => (
+                  <label key={u.id} className="flex items-center space-x-3 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700">
+                    <input type="checkbox" checked={selectedUsers.includes(u.id)} onChange={() => handleUserToggle(u.id)} className="rounded text-green-600 focus:ring-green-500" />
+                    <img src={u.avatar_url || `https://ui-avatars.com/api/?name=${u.name}`} alt={u.name} className="w-8 h-8 rounded-full" />
+                    <span>{u.name}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
-        <div className="p-4 flex justify-end space-x-2">
-          <button onClick={onClose} className="px-4 py-2 border rounded">Cancelar</button>
-          <button onClick={handleCreate} disabled={loading} className="px-4 py-2 bg-green-600 text-white rounded disabled:opacity-50">
-            {loading ? <Loader2 className="animate-spin" /> : 'Criar'}
+        <div className="p-4 flex justify-end space-x-2 border-t dark:border-gray-700">
+          <button onClick={onClose} className="px-4 py-2 border rounded-lg dark:border-gray-600">Cancelar</button>
+          <button onClick={handleCreate} disabled={loading} className="px-4 py-2 bg-green-600 text-white rounded-lg disabled:opacity-50">
+            {loading ? <Loader2 className="animate-spin" /> : 'Criar Canal'}
           </button>
         </div>
       </div>

@@ -2,11 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { supabase, Profile, Queue, Team } from '../../lib/supabase';
 import { Plus, Loader2, Edit, Trash2, Users, FolderOpen, UserPlus as TeamIcon } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { UserEditModal } from './UserEditModal';
 
 // Sub-component for Users
 const UsersTab: React.FC = () => {
     const [profiles, setProfiles] = useState<Profile[]>([]);
     const [loading, setLoading] = useState(true);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [selectedUser, setSelectedUser] = useState<Profile | null>(null);
 
     useEffect(() => {
         fetchProfiles();
@@ -19,47 +22,81 @@ const UsersTab: React.FC = () => {
         else setProfiles(data || []);
         setLoading(false);
     };
+    
+    const handleEdit = (user: Profile) => {
+        setSelectedUser(user);
+        setIsModalOpen(true);
+    };
+
+    const handleDelete = async (user: Profile) => {
+        if (!window.confirm(`Tem certeza que deseja remover o usuário ${user.name}? Esta ação é irreversível.`)) return;
+        
+        setLoading(true);
+        try {
+            const { error } = await supabase.rpc('delete_user_profile', { target_user_id: user.id });
+            if (error) throw error;
+            toast.success("Perfil de usuário removido com sucesso.");
+            fetchProfiles();
+        } catch (error: any) {
+            toast.error(error.message || "Erro ao remover usuário.");
+        } finally {
+            setLoading(false);
+        }
+    };
 
     return (
-        <div>
-            <div className="flex justify-end mb-4">
-                <button className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center space-x-2">
-                    <Plus size={20} />
-                    <span>Convidar Usuário</span>
-                </button>
-            </div>
-            {loading ? <Loader2 className="animate-spin mx-auto" /> : (
-                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border dark:border-gray-700 overflow-hidden">
-                    <table className="w-full">
-                        <thead className="bg-gray-50 dark:bg-gray-700">
-                            <tr>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Usuário</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Função</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Ações</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                            {profiles.map(p => (
-                                <tr key={p.id}>
-                                    <td className="px-6 py-4 flex items-center space-x-3">
-                                        <img src={p.avatar_url || `https://ui-avatars.com/api/?name=${p.name}`} alt={p.name} className="w-10 h-10 rounded-full" />
-                                        <div>
-                                            <p className="font-medium">{p.name}</p>
-                                            <p className="text-sm text-gray-500">{p.email}</p>
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4"><span className="capitalize px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">{p.role}</span></td>
-                                    <td className="px-6 py-4">
-                                        <button className="p-2 text-gray-400 hover:text-blue-500"><Edit size={18} /></button>
-                                        <button className="p-2 text-gray-400 hover:text-red-500"><Trash2 size={18} /></button>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
+        <>
+            <div>
+                <div className="flex justify-end mb-4">
+                    <button className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center space-x-2">
+                        <Plus size={20} />
+                        <span>Convidar Usuário</span>
+                    </button>
                 </div>
+                {loading ? <Loader2 className="animate-spin mx-auto" /> : (
+                    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border dark:border-gray-700 overflow-hidden">
+                        <table className="w-full">
+                            <thead className="bg-gray-50 dark:bg-gray-700">
+                                <tr>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Usuário</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Função</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                                {profiles.map(p => (
+                                    <tr key={p.id}>
+                                        <td className="px-6 py-4 flex items-center space-x-3">
+                                            <img src={p.avatar_url || `https://ui-avatars.com/api/?name=${p.name}`} alt={p.name} className="w-10 h-10 rounded-full" />
+                                            <div>
+                                                <p className="font-medium">{p.name}</p>
+                                                <p className="text-sm text-gray-500">{p.email}</p>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4"><span className="capitalize px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">{p.role}</span></td>
+                                        <td className="px-6 py-4">
+                                            <button onClick={() => handleEdit(p)} className="p-2 text-gray-400 hover:text-blue-500"><Edit size={18} /></button>
+                                            <button onClick={() => handleDelete(p)} className="p-2 text-gray-400 hover:text-red-500"><Trash2 size={18} /></button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
+            </div>
+            {isModalOpen && selectedUser && (
+                <UserEditModal 
+                    isOpen={isModalOpen}
+                    onClose={() => setIsModalOpen(false)}
+                    onSave={() => {
+                        setIsModalOpen(false);
+                        fetchProfiles();
+                    }}
+                    user={selectedUser}
+                />
             )}
-        </div>
+        </>
     );
 };
 

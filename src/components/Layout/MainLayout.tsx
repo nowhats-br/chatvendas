@@ -18,6 +18,7 @@ import { ApiDocumentation } from '../Api/ApiDocumentation';
 import { SystemSettings } from '../Settings/SystemSettings';
 import { ProductList } from '../Products/ProductList';
 import { SalesReports } from '../Reports/SalesReports';
+import { InternalChatMonitoring } from '../InternalChat/InternalChatMonitoring';
 import { Ticket } from '../../lib/supabase';
 
 const getPageTitle = (activeTab: string) => {
@@ -32,6 +33,7 @@ const getPageTitle = (activeTab: string) => {
     users: 'Usuários',
     queues: 'Filas',
     teams: 'Equipes',
+    monitoring: 'Monitoramento de Chat',
     'quick-messages': 'Mensagens Rápidas',
     chatbot: 'Construtor de Chatbot',
     schedule: 'Agendamentos',
@@ -68,6 +70,7 @@ export const MainLayout: React.FC = () => {
       case 'queues':
       case 'teams':
         return <UserManagement activeTab={activeTab} />;
+      case 'monitoring': return <InternalChatMonitoring />;
       case 'quick-messages': return <QuickMessageManager />;
       case 'chatbot': return <ChatbotBuilder />;
       case 'schedule': return <ScheduleManager />;
