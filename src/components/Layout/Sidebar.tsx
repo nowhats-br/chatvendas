@@ -2,7 +2,7 @@ import React from 'react';
 import { 
   BarChart3, MessageSquare, Kanban, Phone, CheckSquare, Users, Send, Settings,
   Zap, Bot, Calendar, Tag, Code, UserPlus, MessageCircle, FolderOpen, LogOut, Sun, Moon,
-  ShoppingBag, LineChart
+  ShoppingBag, LineChart, Eye
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../hooks/useTheme';
@@ -31,6 +31,10 @@ const managementItems = [
   { id: 'teams', label: 'Equipes', icon: UserPlus },
 ];
 
+const supervisionItems = [
+  { id: 'monitoring', label: 'Monitoramento', icon: Eye },
+];
+
 const toolsItems = [
   { id: 'quick-messages', label: 'Respostas Rápidas', icon: Zap },
   { id: 'chatbot', label: 'Chatbot', icon: Bot },
@@ -44,7 +48,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange }) => {
   const { profile, signOut } = useAuth();
   const { theme, setTheme } = useTheme();
 
-  const renderMenuItems = (items: typeof menuItems, title?: string) => (
+  const renderMenuItems = (items: {id: string, label: string, icon: React.ElementType}[], title?: string) => (
     <div className="mb-4">
       {title && <h3 className="px-4 mb-2 text-xs font-semibold tracking-wider text-gray-400 uppercase">{title}</h3>}
       <ul className="space-y-1">
@@ -80,6 +84,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange }) => {
       <nav className="flex-1 p-4 overflow-y-auto">
         {renderMenuItems(menuItems, 'Principal')}
         {renderMenuItems(managementItems, 'Gerenciamento')}
+        {(profile?.role === 'admin' || profile?.role === 'supervisor') && renderMenuItems(supervisionItems, 'Supervisão')}
         {renderMenuItems(toolsItems, 'Ferramentas')}
       </nav>
       
@@ -92,7 +97,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange }) => {
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium truncate">{profile?.name}</p>
-              <p className="text-xs text-gray-400 truncate">{profile?.role}</p>
+              <p className="text-xs text-gray-400 truncate capitalize">{profile?.role}</p>
             </div>
           </div>
           <button onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')} className="p-2 text-gray-400 rounded-full hover:bg-gray-700">

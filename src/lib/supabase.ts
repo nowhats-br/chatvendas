@@ -95,6 +95,11 @@ export interface Queue {
   updated_at: string;
 }
 
+export interface UserQueue {
+  user_id: string;
+  queue_id: string;
+}
+
 export interface Team {
   id: string;
   name: string;
@@ -223,6 +228,15 @@ export interface InternalChannel {
 export interface InternalMessage {
   id: string;
   channel_id: string;
+  user_id: string;
+  content: string;
+  created_at: string;
+  user?: Profile;
+}
+
+export interface InternalNote {
+  id: string;
+  ticket_id: string;
   user_id: string;
   content: string;
   created_at: string;
