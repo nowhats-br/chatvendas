@@ -1,9 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { supabase, WhatsAppConnection } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { X, Loader2, Save, ArrowRight, Server, Smartphone } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { whatsappService, ConnectionStatus } from '../../lib/whatsapp-service';
 
 interface AddConnectionModalProps {
   isOpen: boolean;
@@ -19,71 +18,17 @@ export const AddConnectionModal: React.FC<AddConnectionModalProps> = ({ isOpen, 
   const [apiProvider, setApiProvider] = useState<ApiProvider>('baileys');
   const [loading, setLoading] = useState(false);
   const [qrCode, setQrCode] = useState<string | null>(null);
-  const [connectionId, setConnectionId] = useState<string | null>(null);
-  const [connectionStatus, setConnectionStatus] = useState<string>('initializing');
   const { user } = useAuth();
-
-  useEffect(() => {
-    if (!isOpen) return;
-
-    // Configurar listeners para eventos do WhatsApp
-    const handleQrCode = (data: any) => {
-      if (data.connectionId === connectionId) {
-        setQrCode(data.qr);
-      }
-    };
-
-    const handleConnectionStatus = (data: ConnectionStatus) => {
-      if (data.connectionId === connectionId) {
-        setConnectionStatus(data.status);
-        
-        if (data.status === 'connected') {
-          toast.success('Conexão estabelecida com sucesso!');
-          // Atualizar status no banco de dados
-          if (connectionId) {
-            supabase
-              .from('whatsapp_connections')
-              .update({ 
-                status: 'connected',
-                phone_number: data.phoneNumber 
-              })
-              .eq('id', connectionId)
-              .then(() => {
-                onSuccess();
-                handleClose();
-              });
-          }
-        } else if (data.status === 'error') {
-          toast.error(data.error || 'Erro na conexão');
-        }
-      }
-    };
-
-    whatsappService.on('qr_code', handleQrCode);
-    whatsappService.on('connection_status', handleConnectionStatus);
-
-    return () => {
-      whatsappService.off('qr_code', handleQrCode);
-      whatsappService.off('connection_status', handleConnectionStatus);
-    };
-  }, [isOpen, connectionId, onSuccess]);
 
   const handleNextStep = async () => {
     if (!name) {
       toast.error("O nome da conexão é obrigatório.");
       return;
     }
-    
     setLoading(true);
-    
+    // In a real scenario, you would call your backend here to generate a QR code
+    // For now, we'll simulate it and move to the next step.
     try {
-      // Verificar se o serviço está disponível
-      const isServiceHealthy = await whatsappService.checkServiceHealth(apiProvider);
-      if (!isServiceHealthy) {
-        throw new Error(`Serviço ${apiProvider} não está disponível. Verifique se está rodando.`);
-      }
-
-      // Criar conexão no banco de dados
       const { data, error } = await supabase
         .from('whatsapp_connections')
         .insert({
@@ -97,14 +42,8 @@ export const AddConnectionModal: React.FC<AddConnectionModalProps> = ({ isOpen, 
       
       if (error) throw error;
       
-      setConnectionId(data.id);
-      
-      // Conectar ao serviço WhatsApp
-      whatsappService.connect(apiProvider);
-      
-      // Criar conexão no serviço
-      whatsappService.createConnection(apiProvider, data.id);
-      
+      // Simulate QR code generation
+      setQrCode(`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=connId:${data.id}`);
       setStep(2);
 
     } catch (err: any) {
@@ -115,25 +54,14 @@ export const AddConnectionModal: React.FC<AddConnectionModalProps> = ({ isOpen, 
   };
 
   const handleClose = () => {
-    // Desconectar conexão se estiver em processo
-    if (connectionId && connectionStatus !== 'connected') {
-      whatsappService.disconnectConnection(apiProvider, connectionId);
-    }
-    
     setStep(1);
     setName('');
     setQrCode(null);
-    setConnectionId(null);
-    setConnectionStatus('initializing');
     onClose();
   };
   
   const handleFinish = () => {
-    if (connectionStatus === 'connected') {
-      toast.success("Conexão estabelecida com sucesso!");
-    } else {
-      toast.success("Conexão adicionada! Aguardando leitura do QR Code.");
-    }
+    toast.success("Conexão adicionada! Aguardando leitura do QR Code.");
     onSuccess();
     handleClose();
   };
@@ -193,58 +121,17 @@ export const AddConnectionModal: React.FC<AddConnectionModalProps> = ({ isOpen, 
 
         {step === 2 && (
           <div className="p-6 text-center">
-            <p className="text-gray-600 dark:text-gray-300 mb-4">
-              Abra o WhatsApp no seu celular, vá para **Aparelhos conectados** e escaneie o QR Code abaixo.
-            </p>
-            
-            <div className="flex justify-center items-center bg-gray-100 dark:bg-gray-700 rounded-lg p-4 mb-4 h-64">
+            <p className="text-gray-600 dark:text-gray-300 mb-4">Abra o WhatsApp no seu celular, vá para **Aparelhos conectados** e escaneie o QR Code abaixo.</p>
+            <div className="flex justify-center items-center bg-gray-100 dark:bg-gray-700 rounded-lg p-4 mb-6 h-64">
               {qrCode ? (
-                <img 
-                  src={`data:image/png;base64,${qrCode}`} 
-                  alt="QR Code WhatsApp" 
-                  className="w-56 h-56 object-contain" 
-                />
+                <img src={qrCode} alt="QR Code" className="w-56 h-56" />
               ) : (
-                <div className="flex flex-col items-center">
-                  <Loader2 className="w-12 h-12 animate-spin text-green-500 mb-2" />
-                  <span className="text-sm text-gray-500">Gerando QR Code...</span>
-                </div>
+                <Loader2 className="w-12 h-12 animate-spin text-green-500" />
               )}
             </div>
-
-            <div className="mb-4">
-              <div className="flex items-center justify-center space-x-2">
-                <div className={`w-3 h-3 rounded-full ${
-                  connectionStatus === 'qr_ready' ? 'bg-yellow-500' :
-                  connectionStatus === 'authenticated' ? 'bg-blue-500' :
-                  connectionStatus === 'connected' ? 'bg-green-500' :
-                  connectionStatus === 'error' ? 'bg-red-500' :
-                  'bg-gray-400'
-                }`}></div>
-                <span className="text-sm text-gray-600 dark:text-gray-300">
-                  {connectionStatus === 'initializing' && 'Inicializando...'}
-                  {connectionStatus === 'qr_ready' && 'QR Code pronto - Escaneie com seu celular'}
-                  {connectionStatus === 'authenticated' && 'Autenticado - Conectando...'}
-                  {connectionStatus === 'connected' && 'Conectado com sucesso!'}
-                  {connectionStatus === 'error' && 'Erro na conexão'}
-                  {connectionStatus === 'reconnecting' && 'Reconectando...'}
-                </span>
-              </div>
-            </div>
-            
-            <div className="flex justify-between">
-              <button 
-                onClick={handleClose} 
-                className="px-4 py-2 text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200"
-              >
-                Cancelar
-              </button>
-              <button 
-                onClick={handleFinish} 
-                disabled={connectionStatus === 'initializing'}
-                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {connectionStatus === 'connected' ? 'Concluir' : 'Continuar em segundo plano'}
+            <div className="flex justify-end">
+              <button onClick={handleFinish} className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+                Concluir
               </button>
             </div>
           </div>

@@ -1,94 +1,96 @@
 import React, { useState, useEffect } from 'react';
-import { MessageSquare, Users, Send, BarChart3, Loader2 } from 'lucide-react';
-import { StatsCard } from './StatsCard';
-import { MessagesChart } from './MessagesChart';
+import { DollarSign, ShoppingCart, MessageSquare, Clock, Loader2 } from 'lucide-react';
+import { KpiCard } from './KpiCard';
+import { SalesPerformanceChart } from './SalesPerformanceChart';
+import { TopAgentsList } from './TopAgentsList';
+import { SalesByAgentChart } from './SalesByAgentChart';
 import { RecentActivity } from './RecentActivity';
 import { supabase } from '../../lib/supabase';
 import toast from 'react-hot-toast';
 
-interface DashboardStats {
-  totalMessages: number;
-  totalContacts: number;
-  activeCampaigns: number;
-  responseRate: number;
+interface KpiData {
+  metric: string;
+  value: number;
+  change: number;
 }
 
 export const Dashboard: React.FC = () => {
-  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [kpis, setKpis] = useState<KpiData[] | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchStats = async () => {
+    const fetchKpis = async () => {
       try {
-        const { count: messagesCount } = await supabase.from('messages').select('*', { count: 'exact', head: true });
-        const { count: contactsCount } = await supabase.from('contacts').select('*', { count: 'exact', head: true });
-        const { count: campaignsCount } = await supabase.from('campaigns').select('*', { count: 'exact', head: true }).eq('status', 'sending');
-        
-        // Placeholder for response rate
-        const responseRate = 87;
-
-        setStats({
-          totalMessages: messagesCount || 0,
-          totalContacts: contactsCount || 0,
-          activeCampaigns: campaignsCount || 0,
-          responseRate: responseRate,
-        });
-
+        const { data, error } = await supabase.rpc('get_dashboard_kpis');
+        if (error) throw error;
+        setKpis(data);
       } catch (error) {
-        console.error("Error fetching dashboard stats:", error);
-        toast.error("Não foi possível carregar as estatísticas.");
+        console.error("Error fetching dashboard KPIs:", error);
+        toast.error("Não foi possível carregar os indicadores do dashboard.");
       } finally {
         setLoading(false);
       }
     };
 
-    fetchStats();
+    fetchKpis();
   }, []);
+
+  const getKpiValue = (metric: string) => kpis?.find(k => k.metric === metric);
 
   if (loading) {
     return (
-      <div className="p-6 h-full flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-green-600" />
+      <div className="p-8 h-full flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+        <Loader2 className="w-10 h-10 animate-spin text-green-500" />
       </div>
     );
   }
 
   return (
-    <div className="p-6 space-y-6 bg-gray-50 dark:bg-gray-900">
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatsCard
-          title="Mensagens Enviadas"
-          value={stats?.totalMessages.toLocaleString() || '0'}
+    <div className="p-4 sm:p-6 lg:p-8 space-y-8 bg-gray-50 dark:bg-gray-900 h-full overflow-y-auto">
+      {/* KPI Cards Row */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <KpiCard
+          title="Receita Total (Mês)"
+          value={`R$ ${getKpiValue('total_revenue')?.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) || '0,00'}`}
+          change={getKpiValue('total_revenue')?.change || 0}
+          icon={DollarSign}
+          period="vs. mês anterior"
+        />
+        <KpiCard
+          title="Vendas (Mês)"
+          value={getKpiValue('total_sales')?.value.toLocaleString('pt-BR') || '0'}
+          change={getKpiValue('total_sales')?.change || 0}
+          icon={ShoppingCart}
+          period="vs. mês anterior"
+        />
+        <KpiCard
+          title="Novos Tickets (Mês)"
+          value={getKpiValue('new_tickets')?.value.toLocaleString('pt-BR') || '0'}
+          change={getKpiValue('new_tickets')?.change || 0}
           icon={MessageSquare}
-          color="green"
+          period="vs. mês anterior"
         />
-        <StatsCard
-          title="Contatos Ativos"
-          value={stats?.totalContacts.toLocaleString() || '0'}
-          icon={Users}
-          color="blue"
-        />
-        <StatsCard
-          title="Campanhas Ativas"
-          value={stats?.activeCampaigns.toLocaleString() || '0'}
-          icon={Send}
-          color="purple"
-        />
-        <StatsCard
-          title="Taxa de Resposta"
-          value={`${stats?.responseRate || 0}%`}
-          icon={BarChart3}
-          color="orange"
+        <KpiCard
+          title="Tempo Médio de Resposta"
+          value={`${getKpiValue('avg_response_time')?.value.toFixed(1) || '0.0'} min`}
+          change={getKpiValue('avg_response_time')?.change || 0}
+          icon={Clock}
+          period="vs. mês anterior"
+          invertChangeColor={true}
         />
       </div>
 
-      {/* Charts and Activity */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
-          <MessagesChart />
+      {/* Main Content Area */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Left Column */}
+        <div className="lg:col-span-2 space-y-8">
+          <SalesPerformanceChart />
+          <SalesByAgentChart />
         </div>
-        <div>
+
+        {/* Right Column */}
+        <div className="space-y-8">
+          <TopAgentsList />
           <RecentActivity />
         </div>
       </div>
