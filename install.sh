@@ -103,7 +103,7 @@ fi
 
 # Instalar dependências básicas (otimizado)
 log "Instalando dependências básicas..."
-sudo apt install -y --no-install-recommends curl wget git build-essential software-properties-common apt-transport-https ca-certificates gnupg lsb-release
+sudo apt install -y --no-install-recommends curl wget git build-essential software-properties-common apt-transport-https ca-certificates gnupg lsb-release rsync
 
 # Instalar Node.js 18.x (otimizado)
 log "Instalando Node.js 18.x..."
@@ -159,8 +159,17 @@ sudo chown chatvendas:chatvendas /opt/chatvendas
 
 # Copiar arquivos do projeto
 log "Copiando arquivos do projeto..."
-sudo cp -r . /opt/chatvendas/
-sudo chown -R chatvendas:chatvendas /opt/chatvendas
+# Verificar se não estamos tentando copiar para o mesmo diretório
+CURRENT_DIR=$(pwd)
+TARGET_DIR="/opt/chatvendas"
+
+if [[ "$CURRENT_DIR" != "$TARGET_DIR" ]]; then
+    # Copiar apenas o conteúdo, excluindo diretórios desnecessários
+    sudo rsync -av --exclude='.git' --exclude='node_modules' --exclude='.env' . "$TARGET_DIR/"
+    sudo chown -R chatvendas:chatvendas "$TARGET_DIR"
+else
+    warning "Já estamos no diretório de destino, pulando cópia..."
+fi
 
 # Instalar dependências em paralelo (otimizado)
 log "Instalando dependências dos serviços (em paralelo)..."
