@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
-import { supabase, WhatsAppConnection } from '../../lib/supabase';
+import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { X, Loader2, Save, ArrowRight, Server, Smartphone } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useWhatsAppConnection } from '../../hooks/useWhatsAppConnection';
+import { QRCodeDisplay } from './QRCodeDisplay';
 
 interface AddConnectionModalProps {
   isOpen: boolean;
@@ -17,33 +19,50 @@ export const AddConnectionModal: React.FC<AddConnectionModalProps> = ({ isOpen, 
   const [name, setName] = useState('');
   const [apiProvider, setApiProvider] = useState<ApiProvider>('baileys');
   const [loading, setLoading] = useState(false);
-  const [qrCode, setQrCode] = useState<string | null>(null);
+  const [connectionId, setConnectionId] = useState<string | null>(null);
   const { user } = useAuth();
+  
+  // Hook para gerenciar conexões WhatsApp
+  const {
+    qrCode,
+    connectionStatus,
+    isConnecting,
+    error,
+    createConnection,
+    disconnectConnection,
+    clearQRCode
+  } = useWhatsAppConnection();
 
   const handleNextStep = async () => {
-    if (!name) {
+    if (!name.trim()) {
       toast.error("O nome da conexão é obrigatório.");
       return;
     }
+    
+    if (!user?.id) {
+      toast.error("Usuário não autenticado.");
+      return;
+    }
+    
     setLoading(true);
-    // In a real scenario, you would call your backend here to generate a QR code
-    // For now, we'll simulate it and move to the next step.
+    
     try {
       const { data, error } = await supabase
         .from('whatsapp_connections')
         .insert({
-          name,
+          name: name.trim(),
           api_provider: apiProvider,
           status: 'connecting',
-          created_by: user!.id
+          created_by: user.id
         })
         .select()
         .single();
       
       if (error) throw error;
       
-      // Simulate QR code generation
-      setQrCode(`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=connId:${data.id}`);
+      // Armazenar o ID da conexão e criar conexão real
+      setConnectionId(data.id);
+      await createConnection(apiProvider, data.id);
       setStep(2);
 
     } catch (err: any) {
@@ -54,16 +73,48 @@ export const AddConnectionModal: React.FC<AddConnectionModalProps> = ({ isOpen, 
   };
 
   const handleClose = () => {
+    // Desconectar se houver uma conexão ativa
+    if (connectionId) {
+      disconnectConnection(connectionId);
+    }
+    
+    // Reset do estado
     setStep(1);
     setName('');
-    setQrCode(null);
+    setApiProvider('baileys');
+    setConnectionId(null);
+    clearQRCode();
     onClose();
   };
   
-  const handleFinish = () => {
-    toast.success("Conexão adicionada! Aguardando leitura do QR Code.");
-    onSuccess();
-    handleClose();
+  const handleComplete = async () => {
+    if (!connectionId) {
+      toast.error("ID da conexão não encontrado.");
+      return;
+    }
+    
+    setLoading(true);
+    
+    try {
+      // Atualizar status da conexão no banco
+      const { error } = await supabase
+        .from('whatsapp_connections')
+        .update({ 
+          status: 'connected',
+          connected_at: new Date().toISOString()
+        })
+        .eq('id', connectionId);
+      
+      if (error) throw error;
+      
+      toast.success("Conexão estabelecida com sucesso!");
+      onSuccess();
+      handleClose();
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao finalizar conexão.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (!isOpen) return null;
@@ -111,28 +162,52 @@ export const AddConnectionModal: React.FC<AddConnectionModalProps> = ({ isOpen, 
               </div>
             </div>
             <div className="flex justify-end">
-              <button onClick={handleNextStep} disabled={loading} className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center space-x-2 disabled:opacity-50">
+              <button 
+                onClick={handleNextStep} 
+                disabled={loading || !name.trim()} 
+                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+              >
                 {loading ? <Loader2 size={18} className="animate-spin" /> : <ArrowRight size={18} />}
-                <span>Avançar</span>
+                <span>{loading ? 'Criando...' : 'Avançar'}</span>
               </button>
             </div>
           </div>
         )}
 
         {step === 2 && (
-          <div className="p-6 text-center">
-            <p className="text-gray-600 dark:text-gray-300 mb-4">Abra o WhatsApp no seu celular, vá para **Aparelhos conectados** e escaneie o QR Code abaixo.</p>
-            <div className="flex justify-center items-center bg-gray-100 dark:bg-gray-700 rounded-lg p-4 mb-6 h-64">
-              {qrCode ? (
-                <img src={qrCode} alt="QR Code" className="w-56 h-56" />
-              ) : (
-                <Loader2 className="w-12 h-12 animate-spin text-green-500" />
+          <div className="p-6">
+            <div className="space-y-6">
+              <div className="text-center">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                  Conectar WhatsApp
+                </h3>
+                <p className="text-sm text-gray-600 dark:text-gray-300">
+                  Escaneie o QR Code com seu WhatsApp para conectar
+                </p>
+              </div>
+
+              <QRCodeDisplay
+                qrCodeData={qrCode}
+                provider={apiProvider}
+                connectionStatus={connectionStatus?.status}
+                isConnecting={isConnecting}
+                error={error}
+                onRetry={() => connectionId && createConnection(apiProvider, connectionId)}
+              />
+
+              {/* Botão de finalizar quando conectado */}
+              {connectionStatus?.status === 'connected' && (
+                <div className="flex justify-center">
+                  <button
+                    onClick={handleComplete}
+                    disabled={loading}
+                    className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+                  >
+                    {loading ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
+                    <span>{loading ? 'Finalizando...' : 'Finalizar Conexão'}</span>
+                  </button>
+                </div>
               )}
-            </div>
-            <div className="flex justify-end">
-              <button onClick={handleFinish} className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
-                Concluir
-              </button>
             </div>
           </div>
         )}

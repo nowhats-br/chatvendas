@@ -5,8 +5,7 @@ export default defineConfig({
   plugins: [react()],
   
   optimizeDeps: {
-    exclude: ['lucide-react'],
-    include: ['react-is', 'recharts']
+    include: ['react-is', 'recharts', 'lucide-react']
   },
   
   resolve: {

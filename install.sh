@@ -359,9 +359,25 @@ else
     # Executar verificação de integridade do Vite
     if [ -f "scripts/vite-health-check.sh" ]; then
         log "Executando verificação de integridade do Vite..."
-        chmod +x scripts/vite-health-check.sh
-        if ! ./scripts/vite-health-check.sh /opt/chatvendas chatvendas; then
-            log "Verificação de integridade falhou - aplicando correções manuais..."
+        
+        # Tentar definir permissões executáveis com fallback seguro
+        if chmod +x scripts/vite-health-check.sh 2>/dev/null; then
+            log "Permissões definidas com sucesso para vite-health-check.sh"
+        else
+            log "Aviso: Não foi possível alterar permissões do vite-health-check.sh (pode estar em sistema de arquivos restrito)"
+            log "Tentando executar com bash explicitamente..."
+        fi
+        
+        # Tentar executar o script com fallback para bash explícito
+        if [ -x "scripts/vite-health-check.sh" ]; then
+            if ! ./scripts/vite-health-check.sh /opt/chatvendas chatvendas; then
+                log "Verificação de integridade falhou - aplicando correções manuais..."
+            fi
+        else
+            log "Executando verificação com bash explícito devido a restrições de permissão..."
+            if ! bash scripts/vite-health-check.sh /opt/chatvendas chatvendas; then
+                log "Verificação de integridade falhou - aplicando correções manuais..."
+            fi
         fi
     fi
     
