@@ -81,9 +81,9 @@ if [ -f "/opt/chatvendas/.env" ]; then
     grep -E '^[A-Z_]+=.*' /opt/chatvendas/.env | sed 's/=.*/=***HIDDEN***/' > "$TEMP_DIR/config/env.template"
 fi
 
-# Backup do ecosystem.config.js
-if [ -f "/opt/chatvendas/ecosystem.config.js" ]; then
-    cp "/opt/chatvendas/ecosystem.config.js" "$TEMP_DIR/config/"
+# Backup do ecosystem.config.cjs
+if [ -f "/opt/chatvendas/ecosystem.config.cjs" ]; then
+    cp "/opt/chatvendas/ecosystem.config.cjs" "$TEMP_DIR/config/"
 fi
 
 # Verificar se há algo para fazer backup

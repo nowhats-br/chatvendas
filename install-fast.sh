@@ -221,7 +221,7 @@ systemctl enable nginx
 # Configurar PM2
 log "Configurando PM2..."
 cd /opt/chatvendas
-sudo -u chatvendas pm2 start ecosystem.config.js
+sudo -u chatvendas pm2 start ecosystem.config.cjs
 sudo -u chatvendas pm2 save
 sudo env PATH=$PATH:/usr/bin pm2 startup systemd -u chatvendas --hp /home/chatvendas
 

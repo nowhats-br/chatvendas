@@ -651,8 +651,8 @@ else
     sudo chown -R chatvendas:chatvendas /opt/chatvendas
     sudo chmod -R 755 /opt/chatvendas
 
-    # Criar arquivo ecosystem.config.js com permissões corretas
-    sudo -u chatvendas tee /opt/chatvendas/ecosystem.config.js > /dev/null <<EOF
+    # Criar arquivo ecosystem.config.cjs com permissões corretas
+sudo -u chatvendas tee /opt/chatvendas/ecosystem.config.cjs > /dev/null <<EOF
 module.exports = {
   apps: [
     {
@@ -686,12 +686,12 @@ module.exports = {
 EOF
 
     # Verificar se o arquivo foi criado com sucesso
-    if [ -f "/opt/chatvendas/ecosystem.config.js" ]; then
-        success "Arquivo ecosystem.config.js criado com sucesso"
-        sudo chown chatvendas:chatvendas /opt/chatvendas/ecosystem.config.js
-        sudo chmod 644 /opt/chatvendas/ecosystem.config.js
-    else
-        error "Falha ao criar ecosystem.config.js"
+    if [ -f "/opt/chatvendas/ecosystem.config.cjs" ]; then
+    success "Arquivo ecosystem.config.cjs criado com sucesso"
+    sudo chown chatvendas:chatvendas /opt/chatvendas/ecosystem.config.cjs
+    sudo chmod 644 /opt/chatvendas/ecosystem.config.cjs
+else
+    error "Falha ao criar ecosystem.config.cjs"
         exit 1
     fi
     
@@ -703,7 +703,7 @@ if skip_if_completed "services_startup"; then
     true # Etapa já executada
 else
     log "Iniciando serviços..."
-    sudo -u chatvendas pm2 start ecosystem.config.js
+    sudo -u chatvendas pm2 start ecosystem.config.cjs
     sudo -u chatvendas pm2 save
     sudo -u chatvendas pm2 startup
 
