@@ -430,6 +430,10 @@ if skip_if_completed "env_configuration"; then
     true # Etapa já executada
 else
     log "Configurando variáveis de ambiente..."
+    
+    # Garantir permissões corretas antes de criar arquivos .env
+    sudo chown -R chatvendas:chatvendas /opt/chatvendas
+    sudo chmod -R 755 /opt/chatvendas
 
     # Frontend .env
     cd /opt/chatvendas
@@ -439,7 +443,7 @@ else
         sudo -u chatvendas sed -i "s|VITE_WEBJS_URL=.*|VITE_WEBJS_URL=https://$DOMAIN/api/webjs|g" .env
     else
         warning "Arquivo .env.example não encontrado no frontend, criando .env básico..."
-        sudo -u chatvendas tee .env > /dev/null <<EOF
+        sudo -u chatvendas tee /opt/chatvendas/.env > /dev/null <<EOF
 VITE_BAILEYS_URL=https://$DOMAIN/api/baileys
 VITE_WEBJS_URL=https://$DOMAIN/api/webjs
 EOF
@@ -453,7 +457,7 @@ EOF
         sudo -u chatvendas sed -i "s|FRONTEND_URL=.*|FRONTEND_URL=https://$DOMAIN|g" .env
     else
         warning "Arquivo .env.example não encontrado no Baileys, criando .env básico..."
-        sudo -u chatvendas tee .env > /dev/null <<EOF
+        sudo -u chatvendas tee /opt/chatvendas/server/baileys-service/.env > /dev/null <<EOF
 PORT=$BAILEYS_PORT
 FRONTEND_URL=https://$DOMAIN
 EOF
@@ -467,11 +471,24 @@ EOF
         sudo -u chatvendas sed -i "s|FRONTEND_URL=.*|FRONTEND_URL=https://$DOMAIN|g" .env
     else
         warning "Arquivo .env.example não encontrado no Web.js, criando .env básico..."
-        sudo -u chatvendas tee .env > /dev/null <<EOF
+        sudo -u chatvendas tee /opt/chatvendas/server/webjs-service/.env > /dev/null <<EOF
 PORT=$WEBJS_PORT
 FRONTEND_URL=https://$DOMAIN
 EOF
     fi
+    
+    # Verificar se todos os arquivos .env foram criados com sucesso
+    for env_file in "/opt/chatvendas/.env" "/opt/chatvendas/server/baileys-service/.env" "/opt/chatvendas/server/webjs-service/.env"; do
+        if [ -f "$env_file" ]; then
+            success "Arquivo $env_file criado com sucesso"
+            sudo chown chatvendas:chatvendas "$env_file"
+            sudo chmod 644 "$env_file"
+        else
+            error "Falha ao criar $env_file"
+            exit 1
+        fi
+    done
+    
     mark_checkpoint "env_configuration"
 fi
 
@@ -628,10 +645,14 @@ if skip_if_completed "pm2_configuration"; then
     true # Etapa já executada
 else
     log "Configurando PM2..."
+    
+    # Garantir que estamos no diretório correto e com permissões adequadas
     cd /opt/chatvendas
+    sudo chown -R chatvendas:chatvendas /opt/chatvendas
+    sudo chmod -R 755 /opt/chatvendas
 
-    # Criar arquivo ecosystem.config.js
-    sudo -u chatvendas tee ecosystem.config.js > /dev/null <<EOF
+    # Criar arquivo ecosystem.config.js com permissões corretas
+    sudo -u chatvendas tee /opt/chatvendas/ecosystem.config.js > /dev/null <<EOF
 module.exports = {
   apps: [
     {
@@ -663,6 +684,17 @@ module.exports = {
   ]
 };
 EOF
+
+    # Verificar se o arquivo foi criado com sucesso
+    if [ -f "/opt/chatvendas/ecosystem.config.js" ]; then
+        success "Arquivo ecosystem.config.js criado com sucesso"
+        sudo chown chatvendas:chatvendas /opt/chatvendas/ecosystem.config.js
+        sudo chmod 644 /opt/chatvendas/ecosystem.config.js
+    else
+        error "Falha ao criar ecosystem.config.js"
+        exit 1
+    fi
+    
     mark_checkpoint "pm2_configuration"
 fi
 
@@ -811,6 +843,12 @@ if skip_if_completed "backup_configuration"; then
     true # Etapa já executada
 else
     log "Criando script de backup..."
+    
+    # Garantir que o diretório existe e tem permissões corretas
+    sudo mkdir -p /opt/chatvendas
+    sudo chown -R chatvendas:chatvendas /opt/chatvendas
+    
+    # Criar script de backup com caminho absoluto
     sudo tee /opt/chatvendas/backup.sh > /dev/null <<'EOF'
 #!/bin/bash
 BACKUP_DIR="/opt/chatvendas/backups"
@@ -829,8 +867,15 @@ find $BACKUP_DIR -name "sessions_*.tar.gz" -mtime +7 -delete
 echo "Backup concluído: $BACKUP_DIR/sessions_$DATE.tar.gz"
 EOF
 
-    sudo chmod +x /opt/chatvendas/backup.sh
-    sudo chown chatvendas:chatvendas /opt/chatvendas/backup.sh
+    # Verificar se o script foi criado com sucesso
+    if [ -f "/opt/chatvendas/backup.sh" ]; then
+        success "Script de backup criado com sucesso"
+        sudo chmod +x /opt/chatvendas/backup.sh
+        sudo chown chatvendas:chatvendas /opt/chatvendas/backup.sh
+    else
+        error "Falha ao criar script de backup"
+        exit 1
+    fi
 
     # Configurar cron para backup diário
     log "Configurando backup automático..."
