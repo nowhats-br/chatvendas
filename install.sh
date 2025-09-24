@@ -154,18 +154,105 @@ else
     mark_checkpoint "basic_dependencies"
 fi
 
-# Instalar Node.js 18.x (otimizado)
+# Instalar Node.js 20.x LTS (atualizado para compatibilidade)
 if skip_if_completed "nodejs_install"; then
     true # Etapa já executada
 else
-    log "Instalando Node.js 18.x..."
-    if ! command -v node &> /dev/null; then
-        curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
-        sudo apt install -y nodejs
+    log "Instalando Node.js 20.x LTS..."
+    
+    # Verificar se Node.js já está instalado e se é versão compatível
+    if command -v node &> /dev/null; then
+        CURRENT_NODE_VERSION=$(node --version | cut -d'v' -f2)
+        MAJOR_VERSION=$(echo $CURRENT_NODE_VERSION | cut -d'.' -f1)
+        
+        if [[ $MAJOR_VERSION -ge 20 ]]; then
+            info "Node.js já está instalado em versão compatível: v$CURRENT_NODE_VERSION"
+        else
+            warning "Node.js versão $CURRENT_NODE_VERSION é incompatível. Atualizando para v20 LTS..."
+            # Remover versão antiga
+            sudo apt remove -y nodejs npm
+            # Instalar Node.js 20 LTS
+            curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+            sudo apt install -y nodejs
+        fi
     else
-        info "Node.js já está instalado: $(node --version)"
+        # Instalar Node.js 20 LTS
+        curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+        sudo apt install -y nodejs
     fi
+    
+    # Verificar instalação
+    NEW_VERSION=$(node --version)
+    NPM_VERSION=$(npm --version)
+    success "Node.js instalado: $NEW_VERSION"
+    success "NPM instalado: $NPM_VERSION"
+    
     mark_checkpoint "nodejs_install"
+fi
+
+# Verificar compatibilidade do sistema e dependências
+if skip_if_completed "system_compatibility_check"; then
+    true # Etapa já executada
+else
+    log "Verificando compatibilidade do sistema e dependências..."
+    
+    # Verificar versão do Ubuntu/Debian
+    if [[ -f /etc/os-release ]]; then
+        source /etc/os-release
+        log "Sistema operacional detectado: $NAME $VERSION"
+        
+        # Verificar se é uma versão suportada
+        case $ID in
+            ubuntu)
+                if [[ $(echo "$VERSION_ID >= 18.04" | bc -l) -eq 1 ]]; then
+                    success "Ubuntu $VERSION_ID é suportado"
+                else
+                    warning "Ubuntu $VERSION_ID pode ter problemas de compatibilidade"
+                fi
+                ;;
+            debian)
+                if [[ $(echo "$VERSION_ID >= 10" | bc -l) -eq 1 ]]; then
+                    success "Debian $VERSION_ID é suportado"
+                else
+                    warning "Debian $VERSION_ID pode ter problemas de compatibilidade"
+                fi
+                ;;
+            *)
+                warning "Sistema operacional $ID não foi testado, mas pode funcionar"
+                ;;
+        esac
+    fi
+    
+    # Verificar recursos do sistema
+    TOTAL_RAM=$(free -m | awk 'NR==2{printf "%.0f", $2}')
+    AVAILABLE_DISK=$(df -BM / | awk 'NR==2{printf "%.0f", $4}' | sed 's/M//')
+    
+    log "Recursos do sistema:"
+    log "  RAM Total: ${TOTAL_RAM}MB"
+    log "  Espaço em disco disponível: ${AVAILABLE_DISK}MB"
+    
+    # Verificar requisitos mínimos
+    if [[ $TOTAL_RAM -lt 1024 ]]; then
+        warning "RAM insuficiente (${TOTAL_RAM}MB). Recomendado: 1GB ou mais"
+    else
+        success "RAM suficiente: ${TOTAL_RAM}MB"
+    fi
+    
+    if [[ $AVAILABLE_DISK -lt 2048 ]]; then
+        warning "Espaço em disco insuficiente (${AVAILABLE_DISK}MB). Recomendado: 2GB ou mais"
+    else
+        success "Espaço em disco suficiente: ${AVAILABLE_DISK}MB"
+    fi
+    
+    # Verificar se o usuário tem privilégios sudo
+    if sudo -n true 2>/dev/null; then
+        success "Privilégios sudo verificados"
+    else
+        error "Este script requer privilégios sudo"
+        exit 1
+    fi
+    
+    mark_checkpoint "system_compatibility_check"
 fi
 
 # Verificar versões
@@ -228,13 +315,31 @@ else
     mark_checkpoint "user_creation"
 fi
 
-# Criar diretórios
+# Criar diretórios com permissões corretas
 if skip_if_completed "directory_structure"; then
     true # Etapa já executada
 else
-    log "Criando estrutura de diretórios..."
+    log "Criando estrutura de diretórios com permissões corretas..."
+    
+    # Criar diretório principal
     sudo mkdir -p /opt/chatvendas
-    sudo chown chatvendas:chatvendas /opt/chatvendas
+    
+    # Configurar permissões corretas para evitar EACCES
+    sudo chown -R chatvendas:chatvendas /opt/chatvendas
+    sudo chmod -R 755 /opt/chatvendas
+    
+    # Criar subdiretórios necessários
+    sudo -u chatvendas mkdir -p /opt/chatvendas/node_modules
+    sudo -u chatvendas mkdir -p /opt/chatvendas/server/baileys-service/node_modules
+    sudo -u chatvendas mkdir -p /opt/chatvendas/server/webjs-service/node_modules
+    sudo -u chatvendas mkdir -p /opt/chatvendas/dist
+    sudo -u chatvendas mkdir -p /opt/chatvendas/logs
+    
+    # Configurar npm para usar diretórios locais
+    sudo -u chatvendas npm config set prefix /opt/chatvendas/.npm-global
+    sudo -u chatvendas npm config set cache /opt/chatvendas/.npm-cache
+    
+    success "Estrutura de diretórios criada com permissões corretas"
     mark_checkpoint "directory_structure"
 fi
 
@@ -259,27 +364,51 @@ else
     mark_checkpoint "project_files"
 fi
 
-# Instalar dependências em paralelo (otimizado)
+# Instalar dependências com correções de compatibilidade
 if skip_if_completed "dependencies_install"; then
     true # Etapa já executada
 else
-    log "Instalando dependências dos serviços (em paralelo)..."
+    log "Instalando dependências dos serviços com correções de compatibilidade..."
 
-    # Função para instalar dependências
+    # Função para instalar dependências com flags de compatibilidade
     install_deps() {
         local service_path=$1
         local service_name=$2
         
         cd "$service_path"
         log "Instalando dependências do $service_name..."
-        sudo -u chatvendas npm install --production --silent
+        
+        # Limpar cache e dependências antigas
+        sudo -u chatvendas rm -rf node_modules package-lock.json
+        
+        # Instalar com flags de compatibilidade
+        sudo -u chatvendas npm install --legacy-peer-deps --no-audit --no-fund --production
+        
+        if [ $? -eq 0 ]; then
+            success "Dependências do $service_name instaladas com sucesso"
+        else
+            error "Falha ao instalar dependências do $service_name"
+            exit 1
+        fi
     }
 
     # Executar instalações em paralelo
     (
         cd /opt/chatvendas
         log "Instalando dependências do frontend..."
-        sudo -u chatvendas npm install --production --silent
+        
+        # Limpar cache e dependências antigas
+        sudo -u chatvendas rm -rf node_modules package-lock.json
+        
+        # Instalar com flags de compatibilidade
+        sudo -u chatvendas npm install --legacy-peer-deps --no-audit --no-fund --production
+        
+        if [ $? -eq 0 ]; then
+            success "Dependências do frontend instaladas com sucesso"
+        else
+            error "Falha ao instalar dependências do frontend"
+            exit 1
+        fi
     ) &
 
     (
@@ -292,7 +421,7 @@ else
 
     # Aguardar todas as instalações terminarem
     wait
-    log "Todas as dependências foram instaladas!"
+    success "Todas as dependências foram instaladas com sucesso!"
     mark_checkpoint "dependencies_install"
 fi
 
@@ -346,55 +475,69 @@ EOF
     mark_checkpoint "env_configuration"
 fi
 
-# Build do frontend
+# Build do frontend com verificações robustas
 if skip_if_completed "frontend_build"; then
     true # Etapa já executada
 else
-    log "Fazendo build do frontend..."
+    log "Fazendo build do frontend com verificações robustas..."
     cd /opt/chatvendas
+    
     # Garantir permissões corretas antes do build
     sudo chown -R chatvendas:chatvendas /opt/chatvendas
     sudo chmod -R 755 /opt/chatvendas
     
-    # Executar verificação de integridade do Vite
-    if [ -f "scripts/vite-health-check.sh" ]; then
-        log "Executando verificação de integridade do Vite..."
-        
-        # Tentar definir permissões executáveis com fallback seguro
-        if chmod +x scripts/vite-health-check.sh 2>/dev/null; then
-            log "Permissões definidas com sucesso para vite-health-check.sh"
-        else
-            log "Aviso: Não foi possível alterar permissões do vite-health-check.sh (pode estar em sistema de arquivos restrito)"
-            log "Tentando executar com bash explicitamente..."
-        fi
-        
-        # Tentar executar o script com fallback para bash explícito
-        if [ -x "scripts/vite-health-check.sh" ]; then
-            if ! ./scripts/vite-health-check.sh /opt/chatvendas chatvendas; then
-                log "Verificação de integridade falhou - aplicando correções manuais..."
-            fi
-        else
-            log "Executando verificação com bash explícito devido a restrições de permissão..."
-            if ! bash scripts/vite-health-check.sh /opt/chatvendas chatvendas; then
-                log "Verificação de integridade falhou - aplicando correções manuais..."
-            fi
-        fi
+    # Verificar se o Vite está disponível
+    log "Verificando disponibilidade do Vite..."
+    if ! sudo -u chatvendas npx vite --version >/dev/null 2>&1; then
+        warning "Vite não encontrado, reinstalando dependências..."
+        sudo -u chatvendas npm cache clean --force 2>/dev/null || true
+        sudo -u chatvendas npm install --legacy-peer-deps --no-audit --no-fund
     fi
     
-    # Limpeza robusta de cache do Vite
-    log "Limpando cache do Vite..."
+    # Verificar se ainda há problemas com o Vite
+    if ! sudo -u chatvendas npx vite --version >/dev/null 2>&1; then
+        warning "Instalando Vite globalmente como fallback..."
+        sudo -u chatvendas npm install -g vite@latest
+    fi
+    
+    # Limpeza robusta de cache e arquivos antigos
+    log "Limpando cache e arquivos antigos..."
     sudo -u chatvendas rm -rf node_modules/.vite 2>/dev/null || true
     sudo -u chatvendas rm -rf dist 2>/dev/null || true
     sudo -u chatvendas find . -name "*.timestamp-*.mjs" -delete 2>/dev/null || true
     
-    # Verificar se o Vite está acessível
-    if ! sudo -u chatvendas npx vite --version >/dev/null 2>&1; then
-        log "Reinstalando dependências devido a problema com Vite..."
-        sudo -u chatvendas npm cache clean --force 2>/dev/null || true
-        sudo -u chatvendas npm install --legacy-peer-deps
+    # Verificar variáveis de ambiente necessárias
+    log "Verificando variáveis de ambiente..."
+    if [[ ! -f ".env" ]]; then
+        error "Arquivo .env não encontrado! Certifique-se de que a etapa de configuração foi executada."
+        exit 1
     fi
     
-    sudo -u chatvendas npm run build
+    # Executar build com tratamento de erros
+    log "Executando build do projeto..."
+    if sudo -u chatvendas npm run build; then
+        success "Build do frontend concluído com sucesso!"
+        
+        # Verificar se o diretório dist foi criado
+        if [[ -d "dist" ]]; then
+            success "Diretório dist criado com sucesso"
+            log "Arquivos gerados: $(sudo -u chatvendas ls -la dist/ | wc -l) arquivos"
+        else
+            error "Diretório dist não foi criado após o build"
+            exit 1
+        fi
+    else
+        error "Falha no build do frontend"
+        log "Tentando build com npx vite build diretamente..."
+        
+        if sudo -u chatvendas npx vite build; then
+            success "Build alternativo concluído com sucesso!"
+        else
+            error "Falha no build alternativo. Verifique os logs acima."
+            exit 1
+        fi
+    fi
+    
     mark_checkpoint "frontend_build"
 fi
 
@@ -407,16 +550,6 @@ else
 server {
     listen 80;
     server_name $DOMAIN;
-    
-    # Redirect HTTP to HTTPS
-    return 301 https://\$server_name\$request_uri;
-}
-
-server {
-    listen 443 ssl http2;
-    server_name $DOMAIN;
-    
-    # SSL Configuration (will be configured by Certbot)
     
     # Frontend
     location / {
@@ -479,7 +612,14 @@ EOF
     sudo rm -f /etc/nginx/sites-enabled/default
 
     # Testar configuração do Nginx
-    sudo nginx -t
+    if sudo nginx -t; then
+        success "Configuração do Nginx válida"
+        sudo systemctl reload nginx
+    else
+        error "Configuração do Nginx inválida"
+        exit 1
+    fi
+    
     mark_checkpoint "nginx_configuration"
 fi
 
@@ -549,11 +689,104 @@ if skip_if_completed "ssl_configuration"; then
     true # Etapa já executada
 else
     log "Configurando SSL com Certbot..."
+    
+    # Aguardar o Nginx estar funcionando
+    sleep 5
+    
     if [ "$SKIP_UPGRADE" = "true" ]; then
         info "Modo rápido: SSL será configurado em segundo plano"
         (sudo certbot --nginx -d $DOMAIN --email $EMAIL --agree-tos --non-interactive --redirect > /tmp/certbot.log 2>&1 &)
     else
-        sudo certbot --nginx -d $DOMAIN --email $EMAIL --agree-tos --non-interactive --redirect
+        # Configurar SSL e automaticamente atualizar a configuração do Nginx
+        if sudo certbot --nginx -d $DOMAIN --email $EMAIL --agree-tos --non-interactive --redirect; then
+            success "SSL configurado com sucesso"
+        else
+            warning "Falha na configuração SSL automática. Tentando configuração manual..."
+            
+            # Fallback: configurar SSL manualmente
+            sudo certbot certonly --nginx -d $DOMAIN --email $EMAIL --agree-tos --non-interactive
+            
+            # Atualizar configuração do Nginx manualmente para incluir SSL
+            sudo tee /etc/nginx/sites-available/chatvendas > /dev/null <<EOF
+server {
+    listen 80;
+    server_name $DOMAIN;
+    return 301 https://\$server_name\$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name $DOMAIN;
+    
+    ssl_certificate /etc/letsencrypt/live/$DOMAIN/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/$DOMAIN/privkey.pem;
+    include /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+    
+    # Frontend
+    location / {
+        root /opt/chatvendas/dist;
+        index index.html;
+        try_files \$uri \$uri/ /index.html;
+        
+        # Security headers
+        add_header X-Frame-Options "SAMEORIGIN" always;
+        add_header X-XSS-Protection "1; mode=block" always;
+        add_header X-Content-Type-Options "nosniff" always;
+        add_header Referrer-Policy "no-referrer-when-downgrade" always;
+        add_header Content-Security-Policy "default-src 'self' http: https: data: blob: 'unsafe-inline'" always;
+    }
+    
+    # Baileys API
+    location /api/baileys/ {
+        proxy_pass http://localhost:$BAILEYS_PORT/;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_cache_bypass \$http_upgrade;
+        proxy_read_timeout 86400;
+    }
+    
+    # Web.js API
+    location /api/webjs/ {
+        proxy_pass http://localhost:$WEBJS_PORT/;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_cache_bypass \$http_upgrade;
+        proxy_read_timeout 86400;
+    }
+    
+    # Socket.IO
+    location /socket.io/ {
+        proxy_pass http://localhost:$BAILEYS_PORT;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+    }
+}
+EOF
+            
+            # Testar e recarregar configuração
+            if sudo nginx -t; then
+                sudo systemctl reload nginx
+                success "Configuração SSL manual aplicada com sucesso"
+            else
+                error "Falha na configuração SSL manual"
+            fi
+        fi
     fi
 
     # Configurar renovação automática do SSL
@@ -605,9 +838,52 @@ EOF
     mark_checkpoint "backup_configuration"
 fi
 
-# Verificar status dos serviços
+# Verificações finais de saúde do sistema
+log "Executando verificações finais de saúde do sistema..."
+
+# Verificar se todos os serviços estão rodando
 log "Verificando status dos serviços..."
-sudo systemctl status nginx --no-pager
+if sudo systemctl is-active --quiet nginx; then
+    success "Nginx está rodando"
+else
+    warning "Nginx não está rodando"
+fi
+
+# Verificar PM2
+if sudo -u chatvendas pm2 list | grep -q "online"; then
+    success "Serviços PM2 estão rodando"
+else
+    warning "Alguns serviços PM2 podem não estar rodando"
+fi
+
+# Verificar se o build foi criado corretamente
+if [[ -d "/opt/chatvendas/dist" ]] && [[ -f "/opt/chatvendas/dist/index.html" ]]; then
+    success "Build do frontend está presente"
+else
+    warning "Build do frontend pode estar incompleto"
+fi
+
+# Verificar conectividade das portas
+log "Verificando conectividade das portas..."
+if netstat -tuln | grep -q ":80 "; then
+    success "Porta 80 (HTTP) está aberta"
+else
+    warning "Porta 80 (HTTP) não está disponível"
+fi
+
+if netstat -tuln | grep -q ":443 "; then
+    success "Porta 443 (HTTPS) está aberta"
+else
+    info "Porta 443 (HTTPS) será configurada após o SSL"
+fi
+
+# Verificar espaço em disco após instalação
+AVAILABLE_DISK_AFTER=$(df -BM / | awk 'NR==2{printf "%.0f", $4}' | sed 's/M//')
+log "Espaço em disco restante: ${AVAILABLE_DISK_AFTER}MB"
+
+# Verificar status dos serviços
+log "Status detalhado dos serviços:"
+sudo systemctl status nginx --no-pager --lines=3
 sudo -u chatvendas pm2 status
 
 # Limpar arquivo de checkpoint após instalação completa
