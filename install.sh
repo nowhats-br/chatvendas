@@ -721,9 +721,17 @@ else
     # Garantir que a pasta de logs existe antes de iniciar o PM2
     if [ ! -d "/opt/chatvendas/logs" ]; then
         warn "Pasta de logs não encontrada, criando..."
-        sudo -u chatvendas mkdir -p /opt/chatvendas/logs
+        # Criar a pasta como root primeiro
+        sudo mkdir -p /opt/chatvendas/logs
+        # Definir permissões e propriedade
         sudo chmod 755 /opt/chatvendas/logs
         sudo chown chatvendas:chatvendas /opt/chatvendas/logs
+        success "Pasta de logs criada com sucesso"
+    else
+        # Garantir que as permissões estão corretas mesmo se a pasta já existe
+        sudo chmod 755 /opt/chatvendas/logs
+        sudo chown chatvendas:chatvendas /opt/chatvendas/logs
+        info "Pasta de logs já existe, permissões verificadas"
     fi
     
     sudo -u chatvendas pm2 start ecosystem.config.cjs
