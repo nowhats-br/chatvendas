@@ -6,12 +6,20 @@ const cors = require('cors');
 const QRCode = require('qrcode');
 const { v4: uuidv4 } = require('uuid');
 const pino = require('pino');
+
+// Carregar variáveis de ambiente
 require('dotenv').config();
 
-// Configuração do logger
+// Configurações e variáveis globais
+const PORT = process.env.BAILEYS_PORT || process.env.PORT || 3001;
+const NODE_ENV = process.env.NODE_ENV || 'development';
+const SESSION_ID = process.env.SESSION_ID || uuidv4();
+const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
+
+// Logger
 const logger = pino({
-    level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
-    transport: process.env.NODE_ENV !== 'production' ? {
+    level: NODE_ENV === 'development' ? 'debug' : 'info',
+    transport: NODE_ENV === 'development' ? {
         target: 'pino-pretty',
         options: {
             colorize: true,
@@ -20,40 +28,30 @@ const logger = pino({
     } : undefined
 });
 
-// Configurações
-const PORT = process.env.BAILEYS_PORT || 3001;
-const NODE_ENV = process.env.NODE_ENV || 'development';
-const SESSION_ID = process.env.SESSION_ID || uuidv4();
-
-// Estado da aplicação
-let sock = null;
-let qrCodeData = null;
-let connectionStatus = 'disconnected';
-let isConnecting = false;
-
-// Criar aplicação Express
+// Express app
 const app = express();
 const server = createServer(app);
-
-// Configurar CORS
-const corsOptions = {
-    origin: process.env.NODE_ENV === 'production' 
-        ? [process.env.FRONTEND_URL, process.env.VITE_SUPABASE_URL].filter(Boolean)
-        : true,
-    methods: ['GET', 'POST'],
-    credentials: true
-};
-
-app.use(cors(corsOptions));
-app.use(express.json());
-
-// Configurar Socket.IO
 const io = new Server(server, {
-    cors: corsOptions,
-    transports: ['websocket', 'polling']
+    cors: {
+        origin: FRONTEND_URL,
+        methods: ["GET", "POST"],
+        credentials: true
+    }
 });
 
-// Função para conectar ao WhatsApp
+// Middleware
+app.use(cors({
+    origin: FRONTEND_URL,
+    credentials: true
+}));
+app.use(express.json());
+
+// Variáveis de estado
+let sock = null;
+let connectionStatus = 'disconnected';
+let qrCodeData = null;
+let isConnecting = false;
+
 async function connectToWhatsApp() {
     if (isConnecting) {
         logger.warn('Conexão já em andamento');
@@ -65,11 +63,13 @@ async function connectToWhatsApp() {
         connectionStatus = 'connecting';
         
         // Broadcast status para todos os clientes conectados
-        io.emit('connection_status', { 
-            provider: 'baileys', 
-            status: connectionStatus,
-            timestamp: new Date().toISOString()
-        });
+        if (io) {
+            io.emit('connection_status', { 
+                provider: 'baileys', 
+                status: connectionStatus,
+                timestamp: new Date().toISOString()
+            });
+        }
 
         logger.info('Iniciando conexão com WhatsApp via Baileys...');
 
@@ -118,19 +118,23 @@ async function connectToWhatsApp() {
                     logger.info('QR Code gerado com sucesso');
                     
                     // Enviar QR Code para todos os clientes conectados
-                    io.emit('qr_code', {
-                        provider: 'baileys',
-                        qrCode: qrCodeData,
-                        timestamp: new Date().toISOString()
-                    });
+                    if (io) {
+                        io.emit('qr_code', {
+                            provider: 'baileys',
+                            qrCode: qrCodeData,
+                            timestamp: new Date().toISOString()
+                        });
+                    }
                     
                 } catch (error) {
                     logger.error('Erro ao gerar QR Code:', error);
-                    io.emit('error', {
-                        provider: 'baileys',
-                        message: 'Erro ao gerar QR Code',
-                        error: error.message
-                    });
+                    if (io) {
+                        io.emit('error', {
+                            provider: 'baileys',
+                            message: 'Erro ao gerar QR Code',
+                            error: error.message
+                        });
+                    }
                 }
             }
 
@@ -143,11 +147,13 @@ async function connectToWhatsApp() {
                 
                 logger.info('Conexão fechada:', { shouldReconnect, reason: lastDisconnect?.error?.message });
                 
-                io.emit('connection_status', {
-                    provider: 'baileys',
-                    status: connectionStatus,
-                    timestamp: new Date().toISOString()
-                });
+                if (io) {
+                    io.emit('connection_status', {
+                        provider: 'baileys',
+                        status: connectionStatus,
+                        timestamp: new Date().toISOString()
+                    });
+                }
 
                 if (shouldReconnect) {
                     logger.info('Tentando reconectar em 5 segundos...');
@@ -162,12 +168,14 @@ async function connectToWhatsApp() {
                 
                 logger.info('Conectado ao WhatsApp com sucesso!');
                 
-                io.emit('connection_status', {
-                    provider: 'baileys',
-                    status: connectionStatus,
-                    timestamp: new Date().toISOString(),
-                    user: sock.user
-                });
+                if (io) {
+                    io.emit('connection_status', {
+                        provider: 'baileys',
+                        status: connectionStatus,
+                        timestamp: new Date().toISOString(),
+                        user: sock.user
+                    });
+                }
             }
         });
 
@@ -186,16 +194,18 @@ async function connectToWhatsApp() {
                     });
                     
                     // Emitir mensagem para clientes conectados
-                    io.emit('new_message', {
-                        provider: 'baileys',
-                        message: {
-                            id: message.key.id,
-                            from: message.key.remoteJid,
-                            timestamp: message.messageTimestamp,
-                            content: message.message,
-                            fromMe: message.key.fromMe
-                        }
-                    });
+                    if (io) {
+                        io.emit('new_message', {
+                            provider: 'baileys',
+                            message: {
+                                id: message.key.id,
+                                from: message.key.remoteJid,
+                                timestamp: message.messageTimestamp,
+                                content: message.message,
+                                fromMe: message.key.fromMe
+                            }
+                        });
+                    }
                 }
             }
         });
@@ -205,11 +215,13 @@ async function connectToWhatsApp() {
         connectionStatus = 'error';
         isConnecting = false;
         
-        io.emit('error', {
-            provider: 'baileys',
-            message: 'Erro na conexão',
-            error: error.message
-        });
+        if (io) {
+            io.emit('error', {
+                provider: 'baileys',
+                message: 'Erro na conexão',
+                error: error.message
+            });
+        }
         
         // Tentar reconectar em 10 segundos
         setTimeout(() => connectToWhatsApp(), 10000);
@@ -275,12 +287,14 @@ app.post('/send-message', async (req, res) => {
         const result = await sendMessage(to, message);
         
         // Emitir evento de mensagem enviada
-        io.emit('message_sent', {
-            provider: 'baileys',
-            to,
-            message,
-            result
-        });
+        if (io) {
+            io.emit('message_sent', {
+                provider: 'baileys',
+                to,
+                message,
+                result
+            });
+        }
         
         res.json(result);
     } catch (error) {
@@ -303,11 +317,13 @@ app.post('/disconnect', async (req, res) => {
         qrCodeData = null;
         isConnecting = false;
         
-        io.emit('connection_status', {
-            provider: 'baileys',
-            status: connectionStatus,
-            timestamp: new Date().toISOString()
-        });
+        if (io) {
+            io.emit('connection_status', {
+                provider: 'baileys',
+                status: connectionStatus,
+                timestamp: new Date().toISOString()
+            });
+        }
         
         res.json({ success: true, message: 'Desconectado com sucesso' });
     } catch (error) {
@@ -359,11 +375,13 @@ io.on('connection', (socket) => {
             qrCodeData = null;
             isConnecting = false;
             
-            io.emit('connection_status', {
-                provider: 'baileys',
-                status: connectionStatus,
-                timestamp: new Date().toISOString()
-            });
+            if (io) {
+                io.emit('connection_status', {
+                    provider: 'baileys',
+                    status: connectionStatus,
+                    timestamp: new Date().toISOString()
+                });
+            }
         } catch (error) {
             logger.error('Erro ao desconectar via Socket.IO:', error);
         }

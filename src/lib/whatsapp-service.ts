@@ -32,12 +32,12 @@ class WhatsAppService {
 
   private initializeSockets() {
     // Conectar ao serviço Baileys
-    this.baileysSocket = io(process.env.VITE_BAILEYS_URL || 'http://localhost:3001', {
+    this.baileysSocket = io(import.meta.env.VITE_BAILEYS_URL || 'http://localhost:3001', {
       autoConnect: false
     });
 
     // Conectar ao serviço WhatsApp Web.js
-    this.webjsSocket = io(process.env.VITE_WEBJS_URL || 'http://localhost:3002', {
+    this.webjsSocket = io(import.meta.env.VITE_WEBJS_URL || 'http://localhost:3003', {
       autoConnect: false
     });
 
@@ -47,50 +47,50 @@ class WhatsAppService {
   private setupEventListeners() {
     // Eventos do Baileys
     if (this.baileysSocket) {
-      this.baileysSocket.on('qr_code', (data) => {
+      this.baileysSocket.on('qr_code', (data: any) => {
         this.emit('qr_code', { ...data, provider: 'baileys' });
       });
 
-      this.baileysSocket.on('connection_status', (data) => {
+      this.baileysSocket.on('connection_status', (data: any) => {
         this.emit('connection_status', { ...data, provider: 'baileys' });
       });
 
-      this.baileysSocket.on('new_message', (data) => {
+      this.baileysSocket.on('new_message', (data: any) => {
         this.emit('new_message', { ...data, provider: 'baileys' });
       });
 
-      this.baileysSocket.on('message_sent', (data) => {
+      this.baileysSocket.on('message_sent', (data: any) => {
         this.emit('message_sent', { ...data, provider: 'baileys' });
       });
 
-      this.baileysSocket.on('error', (data) => {
+      this.baileysSocket.on('error', (data: any) => {
         this.emit('error', { ...data, provider: 'baileys' });
       });
     }
 
     // Eventos do WhatsApp Web.js
     if (this.webjsSocket) {
-      this.webjsSocket.on('qr_code', (data) => {
+      this.webjsSocket.on('qr_code', (data: any) => {
         this.emit('qr_code', { ...data, provider: 'web.js' });
       });
 
-      this.webjsSocket.on('connection_status', (data) => {
+      this.webjsSocket.on('connection_status', (data: any) => {
         this.emit('connection_status', { ...data, provider: 'web.js' });
       });
 
-      this.webjsSocket.on('new_message', (data) => {
+      this.webjsSocket.on('new_message', (data: any) => {
         this.emit('new_message', { ...data, provider: 'web.js' });
       });
 
-      this.webjsSocket.on('message_sent', (data) => {
+      this.webjsSocket.on('message_sent', (data: any) => {
         this.emit('message_sent', { ...data, provider: 'web.js' });
       });
 
-      this.webjsSocket.on('chats_list', (data) => {
+      this.webjsSocket.on('chats_list', (data: any) => {
         this.emit('chats_list', { ...data, provider: 'web.js' });
       });
 
-      this.webjsSocket.on('error', (data) => {
+      this.webjsSocket.on('error', (data: any) => {
         this.emit('error', { ...data, provider: 'web.js' });
       });
     }
@@ -137,32 +137,76 @@ class WhatsAppService {
     }
   }
 
-  sendMessage(provider: ApiProvider, connectionId: string, to: string, message: string) {
-    const socket = this.getSocket(provider);
-    if (socket) {
-      socket.emit('send_message', { connectionId, to, message });
+  async sendMessage(connectionId: string, to: string, message: string, provider: 'baileys' | 'web.js' = 'baileys'): Promise<any> {
+    const socket = provider === 'baileys' ? this.baileysSocket : this.webjsSocket;
+    
+    if (!socket || !socket.connected) {
+      throw new Error(`${provider} socket não está conectado`);
     }
+
+    return new Promise((resolve, reject) => {
+      socket.emit('send_message', { connectionId, to, message }, (response: any) => {
+        if (response.success) {
+          resolve(response);
+        } else {
+          reject(new Error(response.error || 'Erro ao enviar mensagem'));
+        }
+      });
+    });
   }
 
-  sendMedia(provider: ApiProvider, connectionId: string, to: string, media: any, caption?: string) {
-    const socket = this.getSocket(provider);
-    if (socket && provider === 'web.js') {
-      socket.emit('send_media', { connectionId, to, media, caption });
+  async sendMedia(connectionId: string, to: string, media: any, provider: 'baileys' | 'web.js' = 'baileys'): Promise<any> {
+    const socket = provider === 'baileys' ? this.baileysSocket : this.webjsSocket;
+    
+    if (!socket || !socket.connected) {
+      throw new Error(`${provider} socket não está conectado`);
     }
+
+    return new Promise((resolve, reject) => {
+      socket.emit('send_media', { connectionId, to, media }, (response: any) => {
+        if (response.success) {
+          resolve(response);
+        } else {
+          reject(new Error(response.error || 'Erro ao enviar mídia'));
+        }
+      });
+    });
   }
 
-  getConnectionStatus(provider: ApiProvider, connectionId: string) {
-    const socket = this.getSocket(provider);
-    if (socket) {
-      socket.emit('get_connection_status', { connectionId });
+  async getConnectionStatus(connectionId: string, provider: 'baileys' | 'web.js' = 'baileys'): Promise<any> {
+    const socket = provider === 'baileys' ? this.baileysSocket : this.webjsSocket;
+    
+    if (!socket || !socket.connected) {
+      throw new Error(`${provider} socket não está conectado`);
     }
+
+    return new Promise((resolve, reject) => {
+      socket.emit('get_connection_status', { connectionId }, (response: any) => {
+        if (response.success) {
+          resolve(response);
+        } else {
+          reject(new Error(response.error || 'Erro ao obter status da conexão'));
+        }
+      });
+    });
   }
 
-  getChats(provider: ApiProvider, connectionId: string) {
-    const socket = this.getSocket(provider);
-    if (socket && provider === 'web.js') {
-      socket.emit('get_chats', { connectionId });
+  async getChats(connectionId: string, provider: 'baileys' | 'web.js' = 'web.js'): Promise<any> {
+    const socket = provider === 'baileys' ? this.baileysSocket : this.webjsSocket;
+    
+    if (!socket || !socket.connected) {
+      throw new Error(`${provider} socket não está conectado`);
     }
+
+    return new Promise((resolve, reject) => {
+      socket.emit('get_chats', { connectionId }, (response: any) => {
+        if (response.success) {
+          resolve(response);
+        } else {
+          reject(new Error(response.error || 'Erro ao obter chats'));
+        }
+      });
+    });
   }
 
   // Event listeners
@@ -187,12 +231,12 @@ class WhatsAppService {
   async checkServiceHealth(provider: ApiProvider): Promise<boolean> {
     try {
       const baseUrl = provider === 'baileys' 
-        ? (process.env.VITE_BAILEYS_URL || 'http://localhost:3001')
-        : (process.env.VITE_WEBJS_URL || 'http://localhost:3002');
+        ? (import.meta.env.VITE_BAILEYS_URL || 'http://localhost:3001')
+        : (import.meta.env.VITE_WEBJS_URL || 'http://localhost:3003');
       
       const response = await fetch(`${baseUrl}/health`);
       return response.ok;
-    } catch (error) {
+    } catch (error: any) {
       console.error(`Erro ao verificar saúde do serviço ${provider}:`, error);
       return false;
     }

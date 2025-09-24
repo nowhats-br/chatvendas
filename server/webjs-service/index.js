@@ -10,18 +10,19 @@ require('dotenv').config();
 
 // Configuração do logger
 const logger = pino({
-    level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
+    level: process.env.LOG_LEVEL || (process.env.NODE_ENV === 'production' ? 'info' : 'debug'),
     transport: process.env.NODE_ENV !== 'production' ? {
         target: 'pino-pretty',
         options: {
             colorize: true,
-            translateTime: 'SYS:standard'
+            translateTime: 'SYS:standard',
+            ignore: 'pid,hostname'
         }
     } : undefined
 });
 
 // Configurações
-const PORT = process.env.WEBJS_PORT || 3002;
+const PORT = process.env.WEBJS_PORT || 3003; // Mudando para 3003 para evitar conflito
 const NODE_ENV = process.env.NODE_ENV || 'development';
 const SESSION_ID = process.env.SESSION_ID || uuidv4();
 
@@ -424,11 +425,13 @@ io.on('connection', (socket) => {
 
 // Tratamento de erros não capturados
 process.on('uncaughtException', (error) => {
-    logger.error('Erro não capturado:', error);
+    console.error('Erro não capturado:', error.message);
+    console.error('Stack trace:', error.stack);
+    process.exit(1);
 });
 
 process.on('unhandledRejection', (reason, promise) => {
-    logger.error('Promise rejeitada não tratada:', { reason, promise });
+    console.error('Promise rejeitada não tratada:', reason);
 });
 
 // Graceful shutdown

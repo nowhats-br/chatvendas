@@ -60,13 +60,28 @@ info "Web.js: $WEBJS_PORT"
 
 read -p "Pressione Enter para continuar ou Ctrl+C para cancelar..."
 
-# Atualizar apenas lista de pacotes (sem upgrade)
-log "Atualizando lista de pacotes..."
-apt update -qq
+# Verificar conectividade antes de atualizar
+log "Verificando conectividade..."
+if ! ping -c 1 8.8.8.8 &> /dev/null; then
+    warn "Sem conectividade com a internet. Tentando continuar com cache local..."
+else
+    # Atualizar lista de pacotes com timeout
+    log "Atualizando lista de pacotes (com timeout)..."
+    timeout 60 apt update -qq || {
+        warn "Timeout na atualização. Continuando com cache existente..."
+    }
+fi
 
-# Instalar dependências básicas (mínimas)
+# Instalar dependências básicas (mínimas) com retry
 log "Instalando dependências mínimas..."
-apt install -y --no-install-recommends curl wget git nodejs npm nginx
+for i in {1..3}; do
+    if apt install -y --no-install-recommends curl wget git nodejs npm nginx; then
+        break
+    else
+        warn "Tentativa $i falhou. Tentando novamente em 5 segundos..."
+        sleep 5
+    fi
+done
 
 # Verificar Node.js
 if ! command -v node &> /dev/null; then
@@ -96,53 +111,32 @@ log "Copiando arquivos do projeto..."
 cp -r . /opt/chatvendas/
 chown -R chatvendas:chatvendas /opt/chatvendas
 
-# Instalar dependências em paralelo (ultra-rápido)
+# Instalar dependências em paralelo (ultra-rápido) com timeout
 log "Instalando dependências (paralelo + cache)..."
 
-# Frontend
-(cd /opt/chatvendas && sudo -u chatvendas npm install --silent --prefer-offline --no-audit --no-fund) &
+# Frontend com timeout
+(cd /opt/chatvendas && timeout 300 sudo -u chatvendas npm install --silent --prefer-offline --no-audit --no-fund || warn "Timeout na instalação do frontend") &
+FRONTEND_PID=$!
 
-# Baileys
-(cd /opt/chatvendas/server/baileys-service && sudo -u chatvendas npm install --silent --prefer-offline --no-audit --no-fund) &
+# Baileys com timeout
+(cd /opt/chatvendas/server/baileys-service && timeout 180 sudo -u chatvendas npm install --silent --prefer-offline --no-audit --no-fund || warn "Timeout na instalação do Baileys") &
+BAILEYS_PID=$!
 
-# Web.js
-(cd /opt/chatvendas/server/webjs-service && sudo -u chatvendas npm install --silent --prefer-offline --no-audit --no-fund) &
+# Web.js com timeout
+(cd /opt/chatvendas/server/webjs-service && timeout 180 sudo -u chatvendas npm install --silent --prefer-offline --no-audit --no-fund || warn "Timeout na instalação do Web.js") &
+WEBJS_PID=$!
 
-# Aguardar instalações
-wait
+# Aguardar instalações com timeout global
+log "Aguardando instalações (máximo 5 minutos)..."
+timeout 300 wait $FRONTEND_PID $BAILEYS_PID $WEBJS_PID || warn "Algumas instalações podem ter falhado por timeout"
 log "Dependências instaladas!"
 
-# Build do frontend
+# Build do frontend com timeout e retry
 log "Fazendo build do frontend..."
 cd /opt/chatvendas
 # Garantir permissões corretas antes do build
 chown -R chatvendas:chatvendas /opt/chatvendas
 chmod -R 755 /opt/chatvendas
-
-# Executar verificação de integridade do Vite
-if [ -f "scripts/vite-health-check.sh" ]; then
-    log "Executando verificação de integridade do Vite..."
-    
-    # Tentar definir permissões executáveis com fallback seguro
-    if chmod +x scripts/vite-health-check.sh 2>/dev/null; then
-        log "Permissões definidas com sucesso para vite-health-check.sh"
-    else
-        log "Aviso: Não foi possível alterar permissões do vite-health-check.sh (pode estar em sistema de arquivos restrito)"
-        log "Tentando executar com bash explicitamente..."
-    fi
-    
-    # Tentar executar o script com fallback para bash explícito
-    if [ -x "scripts/vite-health-check.sh" ]; then
-        if ! ./scripts/vite-health-check.sh /opt/chatvendas chatvendas; then
-            log "Verificação de integridade falhou - aplicando correções manuais..."
-        fi
-    else
-        log "Executando verificação com bash explícito devido a restrições de permissão..."
-        if ! bash scripts/vite-health-check.sh /opt/chatvendas chatvendas; then
-            log "Verificação de integridade falhou - aplicando correções manuais..."
-        fi
-    fi
-fi
 
 # Limpeza robusta de cache do Vite
 log "Limpando cache do Vite..."
@@ -150,14 +144,20 @@ sudo -u chatvendas rm -rf node_modules/.vite 2>/dev/null || true
 sudo -u chatvendas rm -rf dist 2>/dev/null || true
 sudo -u chatvendas find . -name "*.timestamp-*.mjs" -delete 2>/dev/null || true
 
-# Verificar se o Vite está acessível
-if ! sudo -u chatvendas npx vite --version >/dev/null 2>&1; then
-    log "Reinstalando dependências devido a problema com Vite..."
-    sudo -u chatvendas npm cache clean --force 2>/dev/null || true
-    sudo -u chatvendas npm install --legacy-peer-deps
-fi
-
-sudo -u chatvendas npm run build
+# Build com timeout e retry
+for i in {1..2}; do
+    log "Tentativa $i de build..."
+    if timeout 300 sudo -u chatvendas npm run build; then
+        log "Build concluído com sucesso!"
+        break
+    else
+        warn "Build falhou na tentativa $i. Limpando cache..."
+        sudo -u chatvendas npm cache clean --force 2>/dev/null || true
+        if [ $i -eq 2 ]; then
+            error "Build falhou após 2 tentativas. Continuando sem build..."
+        fi
+    fi
+done
 
 # Configurar .env files rapidamente
 log "Configurando variáveis de ambiente..."

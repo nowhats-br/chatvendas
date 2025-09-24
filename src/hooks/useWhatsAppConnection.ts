@@ -40,12 +40,12 @@ export const useWhatsAppConnection = (): WhatsAppConnectionHook => {
 
   // Inicializar sockets
   useEffect(() => {
-    const baileysSocket = io('http://localhost:3001', {
+    const baileysSocket = io(import.meta.env.VITE_BAILEYS_URL || 'http://localhost:3001', {
       autoConnect: false,
       transports: ['websocket', 'polling']
     });
 
-    const webjsSocket = io('http://localhost:3002', {
+    const webjsSocket = io(import.meta.env.VITE_WEBJS_URL || 'http://localhost:3003', {
       autoConnect: false,
       transports: ['websocket', 'polling']
     });
