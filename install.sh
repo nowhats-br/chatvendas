@@ -30,6 +30,10 @@ warning() {
     echo -e "${YELLOW}[AVISO] $1${NC}"
 }
 
+warn() {
+    echo -e "${YELLOW}[WARN] $1${NC}"
+}
+
 info() {
     echo -e "${BLUE}[INFO] $1${NC}"
 }
