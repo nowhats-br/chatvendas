@@ -88,7 +88,8 @@ fi
 # Criar diretórios
 log "Criando estrutura de diretórios..."
 mkdir -p /opt/chatvendas
-chown chatvendas:chatvendas /opt/chatvendas
+mkdir -p /opt/chatvendas/logs
+chown -R chatvendas:chatvendas /opt/chatvendas
 
 # Copiar arquivos
 log "Copiando arquivos do projeto..."
@@ -221,6 +222,15 @@ systemctl enable nginx
 # Configurar PM2
 log "Configurando PM2..."
 cd /opt/chatvendas
+
+# Garantir que a pasta de logs existe antes de iniciar o PM2
+if [ ! -d "/opt/chatvendas/logs" ]; then
+    warn "Pasta de logs não encontrada, criando..."
+    mkdir -p /opt/chatvendas/logs
+    chmod 755 /opt/chatvendas/logs
+    chown chatvendas:chatvendas /opt/chatvendas/logs
+fi
+
 sudo -u chatvendas pm2 start ecosystem.config.cjs
 sudo -u chatvendas pm2 save
 sudo env PATH=$PATH:/usr/bin pm2 startup systemd -u chatvendas --hp /home/chatvendas

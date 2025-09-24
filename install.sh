@@ -335,6 +335,16 @@ else
     sudo -u chatvendas mkdir -p /opt/chatvendas/dist
     sudo -u chatvendas mkdir -p /opt/chatvendas/logs
     
+    # Verificar se a pasta de logs foi criada com sucesso
+    if [ -d "/opt/chatvendas/logs" ]; then
+        success "Pasta de logs criada com sucesso"
+        sudo chmod 755 /opt/chatvendas/logs
+        sudo chown chatvendas:chatvendas /opt/chatvendas/logs
+    else
+        error "Falha ao criar pasta de logs"
+        exit 1
+    fi
+    
     # Configurar npm para usar diretórios locais
     sudo -u chatvendas npm config set prefix /opt/chatvendas/.npm-global
     sudo -u chatvendas npm config set cache /opt/chatvendas/.npm-cache
@@ -703,6 +713,15 @@ if skip_if_completed "services_startup"; then
     true # Etapa já executada
 else
     log "Iniciando serviços..."
+    
+    # Garantir que a pasta de logs existe antes de iniciar o PM2
+    if [ ! -d "/opt/chatvendas/logs" ]; then
+        warn "Pasta de logs não encontrada, criando..."
+        sudo -u chatvendas mkdir -p /opt/chatvendas/logs
+        sudo chmod 755 /opt/chatvendas/logs
+        sudo chown chatvendas:chatvendas /opt/chatvendas/logs
+    fi
+    
     sudo -u chatvendas pm2 start ecosystem.config.cjs
     sudo -u chatvendas pm2 save
     sudo -u chatvendas pm2 startup
