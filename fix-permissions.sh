@@ -100,5 +100,9 @@ fi
 log_info "Limpando processos PM2 órfãos..."
 sudo -u chatvendas pm2 kill 2>/dev/null || true
 
+# Configurar PM2 para iniciar automaticamente com o sistema
+log_info "Configurando PM2 para iniciar automaticamente com o sistema..."
+sudo env PATH=$PATH:/usr/bin /usr/lib/node_modules/pm2/bin/pm2 startup systemd -u chatvendas --hp /home/chatvendas 2>/dev/null || true
+
 log_success "Correção de permissões concluída!"
 log_info "Agora você pode executar o script de instalação novamente."

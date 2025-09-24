@@ -241,7 +241,10 @@ fi
 
 sudo -u chatvendas pm2 start ecosystem.config.cjs
 sudo -u chatvendas pm2 save
-sudo env PATH=$PATH:/usr/bin pm2 startup systemd -u chatvendas --hp /home/chatvendas
+
+# Configurar PM2 para iniciar com o sistema
+log_info "Configurando PM2 para iniciar automaticamente com o sistema..."
+sudo env PATH=$PATH:/usr/bin /usr/lib/node_modules/pm2/bin/pm2 startup systemd -u chatvendas --hp /home/chatvendas
 
 # Finalizar
 log "Instalação ultra-rápida concluída!"
