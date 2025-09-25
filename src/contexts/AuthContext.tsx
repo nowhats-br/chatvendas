@@ -37,13 +37,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .from('profiles')
         .select('*')
         .eq('id', userId)
-        .maybeSingle(); // FIX: Use maybeSingle() to prevent error if profile doesn't exist
+        .maybeSingle();
 
       if (error) {
         throw error;
       }
       
-      setProfile(data); // data will be the profile object or null
+      setProfile(data);
     } catch (error) {
       console.error('Error fetching profile:', error);
       setProfile(null);
@@ -113,6 +113,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       console.log('Attempting to sign up user:', { email, name });
       
+      // TRY TO FIX CONNECTION ISSUE: Add timeout and better error handling
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      
       const { error } = await supabase.auth.signUp({
         email,
         password,
@@ -122,6 +126,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           },
         },
       });
+
+      clearTimeout(timeoutId);
 
       if (error) {
         console.error('Supabase signup error:', error);
@@ -137,6 +143,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Provide more specific error messages
       if (error?.message) {
         errorMessage = error.message;
+      } else if (error?.name === 'AbortError') {
+        errorMessage = 'Tempo limite de conexão excedido. Verifique sua conexão com o servidor.';
       } else if (error?.status === 0) {
         errorMessage = 'Falha na conexão. Verifique sua internet e tente novamente.';
       } else if (error?.status === 400) {

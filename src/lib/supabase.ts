@@ -32,20 +32,42 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   },
   db: {
     schema: 'public'
+  },
+  // ADD TIMEOUT CONFIGURATION TO PREVENT CONNECTION HANGING
+  realtime: {
+    timeout: 10000, // 10 seconds
   }
 });
 
-// Test the connection
+// Test the connection with better error handling
 const testConnection = async () => {
   try {
-    const result = await supabase.rpc('now');
-    if (result.error) {
-      console.error('Supabase connection test failed:', result.error);
+    console.log('Testing Supabase connection...');
+    // Use a safer test method
+    const { data, error } = await supabase.from('profiles').select('id').limit(1);
+    
+    if (error) {
+      console.error('Supabase connection test failed:', error);
+      // Check if it's a network error
+      if (error.message.includes('Failed to fetch') || error.message.includes('fetch')) {
+        console.error('This appears to be a network connectivity issue. Please check:');
+        console.error('1. Your internet connection');
+        console.error('2. Firewall settings');
+        console.error('3. If Supabase is accessible from your location');
+      }
     } else {
       console.log('Supabase connection test successful');
+      console.log('Test query result:', data);
     }
   } catch (error: any) {
     console.error('Supabase connection test error:', error);
+    if (error.name === 'TypeError' && error.message.includes('fetch')) {
+      console.error('Network error detected. This is likely due to:');
+      console.error('- Internet connectivity issues');
+      console.error('- Firewall blocking the connection');
+      console.error('- DNS resolution problems');
+      console.error('- Supabase service temporary unavailability');
+    }
   }
 };
 

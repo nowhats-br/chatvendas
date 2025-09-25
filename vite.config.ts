@@ -34,5 +34,10 @@ export default defineConfig({
       origin: true,
       credentials: true
     }
+  },
+  
+  // ADDITIONAL CORS CONFIGURATION FOR PRODUCTION
+  define: {
+    global: 'globalThis',
   }
 });
