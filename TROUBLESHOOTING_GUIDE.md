@@ -3,18 +3,18 @@
 ## Problema: "Não foi possível conectar ao servidor. Verifique sua conexão com a internet e tente novamente."
 
 ### Causa
-Esse erro ocorre quando o frontend não consegue se comunicar com os serviços backend (Baileys e Web.js). Isso pode acontecer por vários motivos:
+Esse erro ocorre quando o frontend não consegue se comunicar com os serviços backend (Baileys e Web.js) no Ubuntu. Isso pode acontecer por vários motivos:
 
-1. **Os serviços backend não estão rodando**
-2. **Conflito entre ambientes (Ubuntu vs Windows)**
-3. **Problemas de rede/firewall**
-4. **Configuração incorreta das URLs dos serviços**
+1. **Os serviços backend não estão rodando no Ubuntu**
+2. **Problemas de rede/firewall no Ubuntu**
+3. **Configuração incorreta das URLs dos serviços**
+4. **Problemas com o CORS**
 
 ### Soluções
 
 #### Solução 1: Verificar se os serviços estão rodando no Ubuntu
 
-1. Acesse o servidor Ubuntu onde você fez a instalação
+1. Acesse o terminal do Ubuntu onde você fez a instalação
 2. Execute o comando:
    ```bash
    pm2 list
@@ -31,69 +31,59 @@ Esse erro ocorre quando o frontend não consegue se comunicar com os serviços b
    pm2 logs
    ```
 
-#### Solução 2: Se estiver acessando de uma máquina Windows diferente
+#### Solução 2: Verificar conectividade de rede no Ubuntu
 
-1. Edite o arquivo [.env](file://c:\Users\brazz\OneDrive\Documentos\Zpro\chatvendas\chatvendas-1\.env) na sua máquina Windows:
-   ```
-   # Substitua localhost pelo IP do seu servidor Ubuntu
-   VITE_BAILEYS_URL=http://IP_DO_UBUNTU:3001
-   VITE_WEBJS_URL=http://IP_DO_UBUNTU:3003
-   ```
-
-2. Certifique-se de que as portas 3001 e 3003 estão liberadas no firewall do Ubuntu:
+1. Verifique se as portas estão escutando:
    ```bash
-   # No Ubuntu
+   netstat -tulpn | grep :3001
+   netstat -tulpn | grep :3003
+   ```
+
+2. Se estiver usando firewall, libere as portas:
+   ```bash
    sudo ufw allow 3001
    sudo ufw allow 3003
    ```
 
-#### Solução 3: Desenvolvimento local no Windows (apenas para desenvolvimento)
+#### Solução 3: Verificar configuração dos serviços
 
-Se você quiser rodar tudo localmente no Windows para desenvolvimento:
-
-1. Instale as dependências:
-   ```bash
-   npm install
+1. Edite o arquivo [/opt/chatvendas/.env](file:///opt/chatvendas/.env):
+   ```
+   # Verifique se as URLs estão corretas
+   VITE_BAILEYS_URL=http://localhost:3001
+   VITE_WEBJS_URL=http://localhost:3003
    ```
 
-2. Inicie os serviços backend separadamente:
+2. Reinicie os serviços:
    ```bash
-   # Terminal 1 - Baileys service
-   cd server/baileys-service
-   npm start
-   
-   # Terminal 2 - Web.js service
-   cd server/webjs-service
-   npm start
-   
-   # Terminal 3 - Frontend
-   npm run dev
+   pm2 restart all
    ```
 
 #### Solução 4: Verificar logs para mais detalhes
 
-1. Verifique os logs do frontend:
+1. Verifique os logs dos serviços:
    ```bash
-   # No navegador, abra o Console do Desenvolvedor (F12)
-   # Veja se há erros de CORS ou conexão
+   pm2 logs baileys-service
+   pm2 logs webjs-service
+   pm2 logs chatvendas-frontend
    ```
 
-2. Verifique os logs do backend (no Ubuntu):
-   ```bash
-   pm2 logs
-   ```
+2. Verifique os logs do navegador:
+   - Abra o Console do Desenvolvedor (F12) no navegador
+   - Veja se há erros de CORS ou conexão
 
 ### Verificação Rápida
 
 Execute este script para verificar as conexões:
 
 ```bash
+# No Ubuntu, na pasta do projeto
 npx tsx test-connections.ts
 ```
 
 ### Contato
 
 Se o problema persistir, por favor forneça:
-1. Output do comando `pm2 list` no Ubuntu
-2. Qualquer erro nos logs do console do navegador
-3. Se você está acessando de uma máquina diferente da que está rodando os serviços
+1. Output do comando `pm2 list`
+2. Qualquer erro nos logs dos serviços
+3. Erros do console do navegador

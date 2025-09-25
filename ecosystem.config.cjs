@@ -59,8 +59,8 @@ module.exports = {
       cwd: '/opt/chatvendas/server/webjs-service',
       env: {
         NODE_ENV: 'production',
-        WEBJS_PORT: 3002,
-        PORT: 3002,
+        WEBJS_PORT: 3002, // CORREÇÃO: Alterado de 3003 para 3002 para corresponder ao .env.example
+        PORT: 3002,       // CORREÇÃO: Alterado de 3003 para 3002
         SESSION_ID: 'webjs_prod_session',
         HOST: '0.0.0.0',
         // Add CORS configuration
