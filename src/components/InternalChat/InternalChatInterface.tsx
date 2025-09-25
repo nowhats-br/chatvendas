@@ -60,13 +60,13 @@ export const InternalChatInterface: React.FC<InternalChatInterfaceProps> = ({ se
   const sendMessage = async () => {
     if (!newMessage.trim() || !selectedChannel || !user) return;
     const tempId = uuidv4();
-    const tempMessage: InternalMessage = {
+    const tempMessage: any = {
         id: tempId,
         channel_id: selectedChannel.id,
         user_id: user.id,
         content: newMessage,
         created_at: new Date().toISOString(),
-        user: profile
+        user: profile || undefined
     };
     setMessages(current => [...current, tempMessage]);
     setNewMessage('');
