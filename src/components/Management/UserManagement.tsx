@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase, Profile, Queue, Team } from '../../lib/supabase';
 import { Plus, Loader2, Edit, Trash2, Users, FolderOpen, UserPlus as TeamIcon } from 'lucide-react';
+import { ApiError, TeamMember, TabItem } from '../../types';
 import toast from 'react-hot-toast';
 import { UserEditModal } from './UserEditModal';
 
@@ -37,8 +38,9 @@ const UsersTab: React.FC = () => {
             if (error) throw error;
             toast.success("Perfil de usuário removido com sucesso.");
             fetchProfiles();
-        } catch (error: any) {
-            toast.error(error.message || "Erro ao remover usuário.");
+        } catch (error: ApiError | any) {
+            const errorMessage = error?.message || "Erro ao remover usuário.";
+            toast.error(errorMessage);
         } finally {
             setLoading(false);
         }
@@ -187,7 +189,7 @@ const TeamsTab: React.FC = () => {
                             <p className="text-sm text-gray-500 mt-2 line-clamp-2">{t.description || 'Sem descrição.'}</p>
                             <div className="mt-4 pt-4 border-t dark:border-gray-700 text-sm space-y-2">
                                 <p><span className="font-medium text-gray-600 dark:text-gray-400">Líder:</span> {t.leader?.name || 'Não definido'}</p>
-                                <p><span className="font-medium text-gray-600 dark:text-gray-400">Membros:</span> {(t.team_members?.[0] as any)?.count || 0}</p>
+                                <p><span className="font-medium text-gray-600 dark:text-gray-400">Membros:</span> {(t.team_members?.[0] as TeamMember)?.count || 0}</p>
                             </div>
                         </div>
                     ))}
@@ -209,10 +211,10 @@ export const UserManagement: React.FC<UserManagementProps> = ({ activeTab }) => 
     setCurrentTab(activeTab);
   }, [activeTab]);
   
-  const tabs = [
-    { id: 'users', label: 'Usuários', icon: Users },
-    { id: 'queues', label: 'Filas', icon: FolderOpen },
-    { id: 'teams', label: 'Equipes', icon: TeamIcon },
+  const tabs: TabItem[] = [
+    { id: 'users', label: 'Usuários' },
+    { id: 'queues', label: 'Filas' },
+    { id: 'teams', label: 'Equipes' },
   ];
 
   const renderContent = () => {
@@ -231,13 +233,15 @@ export const UserManagement: React.FC<UserManagementProps> = ({ activeTab }) => 
             <div className="border-b border-gray-200 dark:border-gray-700 mb-6">
                 <nav className="-mb-px flex space-x-6">
                     {tabs.map(tab => (
-                        <button key={tab.id} onClick={() => setCurrentTab(tab.id as any)}
+                        <button key={tab.id} onClick={() => setCurrentTab(tab.id as 'users' | 'queues' | 'teams')}
                             className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center space-x-2 ${
                                 currentTab === tab.id
                                 ? 'border-green-500 text-green-600'
                                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                             }`}>
-                            <tab.icon size={18} />
+                            {tab.id === 'users' && <Users size={18} />}
+                            {tab.id === 'queues' && <FolderOpen size={18} />}
+                            {tab.id === 'teams' && <TeamIcon size={18} />}
                             <span>{tab.label}</span>
                         </button>
                     ))}
