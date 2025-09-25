@@ -9,6 +9,7 @@ import { SalesModal } from '../Sales/SalesModal';
 import toast from 'react-hot-toast';
 import { useDropzone } from 'react-dropzone';
 import { v4 as uuidv4 } from 'uuid';
+import { ApiError } from '../../types';
 
 interface ChatInterfaceProps {
   selectedTicket: Ticket | null;
@@ -98,7 +99,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ selectedTicket, on
   const sendMessage = async () => {
     if (!newMessage.trim() || !selectedTicket || !user) return;
     const tempId = uuidv4();
-    const tempMessage: any = {
+    const tempMessage: Message = {
         id: tempId,
         ticket_id: selectedTicket.id,
         user_id: user.id,
@@ -107,6 +108,8 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({ selectedTicket, on
         is_from_contact: false,
         created_at: new Date().toISOString(),
         delivery_status: 'sent',
+        user: user,
+        contact: selectedTicket.contact
     };
     setMessages(current => [...current, tempMessage]);
     setNewMessage('');

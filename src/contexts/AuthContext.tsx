@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase, Profile } from '../lib/supabase';
+import { ApiError } from '../types';
 import toast from 'react-hot-toast';
 
 interface AuthContextType {
@@ -88,8 +89,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (error) throw error;
       toast.success('Login realizado com sucesso!');
-    } catch (error: any) {
-      toast.error(error.message || 'Erro ao fazer login');
+    } catch (error: ApiError | any) {
+      const errorMessage = error?.message || 'Erro ao fazer login';
+      toast.error(errorMessage);
       throw error;
     } finally {
       setLoading(false);
@@ -111,8 +113,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (error) throw error;
       toast.success('Conta criada com sucesso! Verifique seu e-mail para confirmação.');
-    } catch (error: any) {
-      toast.error(error.message || 'Erro ao criar conta');
+    } catch (error: ApiError | any) {
+      const errorMessage = error?.message || 'Erro ao criar conta';
+      toast.error(errorMessage);
       throw error;
     } finally {
       setLoading(false);
@@ -125,8 +128,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
       toast.success('Logout realizado com sucesso!');
-    } catch (error: any) {
-      toast.error(error.message || 'Erro ao fazer logout');
+    } catch (error: ApiError | any) {
+      const errorMessage = error?.message || 'Erro ao fazer logout';
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -145,8 +149,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       setProfile(prev => prev ? { ...prev, ...updates } : null);
       toast.success('Perfil atualizado com sucesso!');
-    } catch (error: any) {
-      toast.error(error.message || 'Erro ao atualizar perfil');
+    } catch (error: ApiError | any) {
+      const errorMessage = error?.message || 'Erro ao atualizar perfil';
+      toast.error(errorMessage);
       throw error;
     }
   };

@@ -15,6 +15,18 @@ export interface ConnectionStatus {
   provider: 'baileys' | 'web.js';
 }
 
+export interface ConnectionCreatedData {
+  connectionId: string;
+  provider: 'baileys' | 'web.js';
+  status: string;
+}
+
+export interface ConnectError {
+  message: string;
+  type: string;
+  description?: string;
+}
+
 export interface WhatsAppConnectionHook {
   qrCode: string | null;
   connectionStatus: ConnectionStatus | null;
@@ -70,7 +82,7 @@ export const useWhatsAppConnection = (): WhatsAppConnectionHook => {
       }
     });
 
-    baileysSocket.on('connection_created', (data) => {
+    baileysSocket.on('connection_created', (data: ConnectionCreatedData) => {
       console.log('Conexão Baileys criada:', data);
     });
 
@@ -94,18 +106,18 @@ export const useWhatsAppConnection = (): WhatsAppConnectionHook => {
       }
     });
 
-    webjsSocket.on('connection_created', (data) => {
+    webjsSocket.on('connection_created', (data: ConnectionCreatedData) => {
       console.log('Conexão Web.js criada:', data);
     });
 
     // Error handlers
-    baileysSocket.on('connect_error', (error) => {
+    baileysSocket.on('connect_error', (error: ConnectError) => {
       console.error('Erro de conexão Baileys:', error);
       setError('Erro ao conectar com o serviço Baileys');
       setIsConnecting(false);
     });
 
-    webjsSocket.on('connect_error', (error) => {
+    webjsSocket.on('connect_error', (error: ConnectError) => {
       console.error('Erro de conexão Web.js:', error);
       setError('Erro ao conectar com o serviço Web.js');
       setIsConnecting(false);

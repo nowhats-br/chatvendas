@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase, Product } from '../../lib/supabase';
 import { X, Save, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { ApiError } from '../../types';
 
 interface ProductModalProps {
   isOpen: boolean;
@@ -40,9 +41,11 @@ export const ProductModal: React.FC<ProductModalProps> = ({ isOpen, onClose, onS
       if (error) throw error;
       toast.success(`Produto ${product ? 'atualizado' : 'criado'} com sucesso!`);
       onSave();
-    } catch (error: any) {
-      toast.error(error.message || 'Falha ao salvar produto.');
-    } finally {
+    } catch (error: ApiError | any) {
+      const errorMessage = error?.message || 'Erro ao salvar produto';
+      toast.error(errorMessage);
+    }
+    finally {
       setLoading(false);
     }
   };

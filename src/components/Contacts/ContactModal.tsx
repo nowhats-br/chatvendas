@@ -5,6 +5,7 @@ import { X, Save, User, FileText, ShoppingCart, Loader2, MessageSquare } from 'l
 import toast from 'react-hot-toast';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { ApiError } from '../../types';
 
 interface ContactModalProps {
   isOpen: boolean;
@@ -92,8 +93,9 @@ export const ContactModal: React.FC<ContactModalProps> = ({ isOpen, onClose, onS
       }
 
       onSave();
-    } catch (error: any) {
-      toast.error(error.message || 'Falha ao salvar contato.');
+    } catch (error: ApiError | any) {
+      const errorMessage = error?.message || 'Erro ao salvar contato';
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }

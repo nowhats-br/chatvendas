@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { supabase } from '../../lib/supabase';
+import { ChartDataItem } from '../../types';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Loader2 } from 'lucide-react';
@@ -21,9 +22,9 @@ export const SalesPerformanceChart: React.FC = () => {
       if (error) {
         console.error(error);
       } else {
-        const formattedData = data.map((item: any) => ({
+        const formattedData = data.map((item: ChartDataItem) => ({
           ...item,
-          date: format(new Date(item.date), 'dd/MM'),
+          date: format(new Date(item.date as string), 'dd/MM'),
         }));
         setData(formattedData);
       }

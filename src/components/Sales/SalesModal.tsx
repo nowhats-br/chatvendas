@@ -3,6 +3,7 @@ import { supabase, Product, Ticket } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { X, Search, Plus, Minus, Trash2, Loader2, ShoppingCart } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { ApiError } from '../../types';
 
 interface SalesModalProps {
   isOpen: boolean;
@@ -84,8 +85,9 @@ export const SalesModal: React.FC<SalesModalProps> = ({ isOpen, onClose, ticket,
       toast.success("Venda registrada com sucesso!");
       onSaleCreated(totalAmount);
       onClose();
-    } catch (error: any) {
-      toast.error(error.message || "Erro ao registrar venda.");
+    } catch (error: ApiError | any) {
+      const errorMessage = error?.message || 'Erro ao salvar venda';
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }

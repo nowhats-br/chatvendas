@@ -19,6 +19,42 @@ export interface ConnectionStatus {
   reason?: string;
 }
 
+export interface QRCodeData {
+  connectionId: string;
+  qr: string;
+  provider: 'baileys' | 'web.js';
+}
+
+export interface MessageData {
+  id: string;
+  from: string;
+  to: string;
+  body: string;
+  timestamp: number;
+  type: string;
+  provider: 'baileys' | 'web.js';
+}
+
+export interface ServiceResponse {
+  success: boolean;
+  data?: any;
+  error?: string;
+}
+
+export interface ChatData {
+  id: string;
+  name: string;
+  lastMessage?: string;
+  timestamp?: number;
+  unreadCount?: number;
+  isGroup?: boolean;
+}
+
+export interface ChatsListData {
+  chats: ChatData[];
+  provider?: string;
+}
+
 export type ApiProvider = 'baileys' | 'web.js';
 
 class WhatsAppService {
@@ -30,7 +66,7 @@ class WhatsAppService {
     this.initializeSockets();
   }
 
-  private initializeSockets() {
+  private initializeSockets(): void {
     // Conectar ao serviço Baileys
     this.baileysSocket = io(import.meta.env.VITE_BAILEYS_URL || 'http://localhost:3001', {
       autoConnect: false
@@ -44,53 +80,53 @@ class WhatsAppService {
     this.setupEventListeners();
   }
 
-  private setupEventListeners() {
+  private setupEventListeners(): void {
     // Eventos do Baileys
     if (this.baileysSocket) {
-      this.baileysSocket.on('qr_code', (data: any) => {
+      this.baileysSocket.on('qr_code', (data: QRCodeData) => {
         this.emit('qr_code', { ...data, provider: 'baileys' });
       });
 
-      this.baileysSocket.on('connection_status', (data: any) => {
+      this.baileysSocket.on('connection_status', (data: ConnectionStatus) => {
         this.emit('connection_status', { ...data, provider: 'baileys' });
       });
 
-      this.baileysSocket.on('new_message', (data: any) => {
+      this.baileysSocket.on('new_message', (data: MessageData) => {
         this.emit('new_message', { ...data, provider: 'baileys' });
       });
 
-      this.baileysSocket.on('message_sent', (data: any) => {
+      this.baileysSocket.on('message_sent', (data: MessageData) => {
         this.emit('message_sent', { ...data, provider: 'baileys' });
       });
 
-      this.baileysSocket.on('error', (data: any) => {
+      this.baileysSocket.on('error', (data: { error: string; provider?: string }) => {
         this.emit('error', { ...data, provider: 'baileys' });
       });
     }
 
     // Eventos do WhatsApp Web.js
     if (this.webjsSocket) {
-      this.webjsSocket.on('qr_code', (data: any) => {
+      this.webjsSocket.on('qr_code', (data: QRCodeData) => {
         this.emit('qr_code', { ...data, provider: 'web.js' });
       });
 
-      this.webjsSocket.on('connection_status', (data: any) => {
+      this.webjsSocket.on('connection_status', (data: ConnectionStatus) => {
         this.emit('connection_status', { ...data, provider: 'web.js' });
       });
 
-      this.webjsSocket.on('new_message', (data: any) => {
+      this.webjsSocket.on('new_message', (data: MessageData) => {
         this.emit('new_message', { ...data, provider: 'web.js' });
       });
 
-      this.webjsSocket.on('message_sent', (data: any) => {
+      this.webjsSocket.on('message_sent', (data: MessageData) => {
         this.emit('message_sent', { ...data, provider: 'web.js' });
       });
 
-      this.webjsSocket.on('chats_list', (data: any) => {
+      this.webjsSocket.on('chats_list', (data: ChatsListData) => {
         this.emit('chats_list', { ...data, provider: 'web.js' });
       });
 
-      this.webjsSocket.on('error', (data: any) => {
+      this.webjsSocket.on('error', (data: { error: string; provider?: string }) => {
         this.emit('error', { ...data, provider: 'web.js' });
       });
     }
@@ -100,27 +136,27 @@ class WhatsAppService {
     return provider === 'baileys' ? this.baileysSocket : this.webjsSocket;
   }
 
-  private emit(event: string, data: any) {
+  private emit(event: string, data: any): void {
     const listeners = this.eventListeners.get(event) || [];
     listeners.forEach(listener => listener(data));
   }
 
   // Métodos públicos
-  connect(provider: ApiProvider) {
+  connect(provider: ApiProvider): void {
     const socket = this.getSocket(provider);
     if (socket && !socket.connected) {
       socket.connect();
     }
   }
 
-  disconnect(provider: ApiProvider) {
+  disconnect(provider: ApiProvider): void {
     const socket = this.getSocket(provider);
     if (socket && socket.connected) {
       socket.disconnect();
     }
   }
 
-  createConnection(provider: ApiProvider, connectionId: string) {
+  createConnection(provider: ApiProvider, connectionId: string): void {
     const socket = this.getSocket(provider);
     if (socket) {
       if (!socket.connected) {
@@ -130,14 +166,14 @@ class WhatsAppService {
     }
   }
 
-  disconnectConnection(provider: ApiProvider, connectionId: string) {
+  disconnectConnection(provider: ApiProvider, connectionId: string): void {
     const socket = this.getSocket(provider);
     if (socket) {
       socket.emit('disconnect_connection', { connectionId });
     }
   }
 
-  async sendMessage(connectionId: string, to: string, message: string, provider: 'baileys' | 'web.js' = 'baileys'): Promise<any> {
+  async sendMessage(connectionId: string, to: string, message: string, provider: 'baileys' | 'web.js' = 'baileys'): Promise<ServiceResponse> {
     const socket = provider === 'baileys' ? this.baileysSocket : this.webjsSocket;
     
     if (!socket || !socket.connected) {
@@ -145,7 +181,7 @@ class WhatsAppService {
     }
 
     return new Promise((resolve, reject) => {
-      socket.emit('send_message', { connectionId, to, message }, (response: any) => {
+      socket.emit('send_message', { connectionId, to, message }, (response: ServiceResponse) => {
         if (response.success) {
           resolve(response);
         } else {
@@ -155,7 +191,7 @@ class WhatsAppService {
     });
   }
 
-  async sendMedia(connectionId: string, to: string, media: any, provider: 'baileys' | 'web.js' = 'baileys'): Promise<any> {
+  async sendMedia(connectionId: string, to: string, media: any, provider: 'baileys' | 'web.js' = 'baileys'): Promise<ServiceResponse> {
     const socket = provider === 'baileys' ? this.baileysSocket : this.webjsSocket;
     
     if (!socket || !socket.connected) {
@@ -163,7 +199,7 @@ class WhatsAppService {
     }
 
     return new Promise((resolve, reject) => {
-      socket.emit('send_media', { connectionId, to, media }, (response: any) => {
+      socket.emit('send_media', { connectionId, to, media }, (response: ServiceResponse) => {
         if (response.success) {
           resolve(response);
         } else {
@@ -173,7 +209,7 @@ class WhatsAppService {
     });
   }
 
-  async getConnectionStatus(connectionId: string, provider: 'baileys' | 'web.js' = 'baileys'): Promise<any> {
+  async getConnectionStatus(connectionId: string, provider: 'baileys' | 'web.js' = 'baileys'): Promise<ServiceResponse> {
     const socket = provider === 'baileys' ? this.baileysSocket : this.webjsSocket;
     
     if (!socket || !socket.connected) {
@@ -181,7 +217,7 @@ class WhatsAppService {
     }
 
     return new Promise((resolve, reject) => {
-      socket.emit('get_connection_status', { connectionId }, (response: any) => {
+      socket.emit('get_connection_status', { connectionId }, (response: ServiceResponse) => {
         if (response.success) {
           resolve(response);
         } else {
@@ -191,7 +227,7 @@ class WhatsAppService {
     });
   }
 
-  async getChats(connectionId: string, provider: 'baileys' | 'web.js' = 'web.js'): Promise<any> {
+  async getChats(connectionId: string, provider: 'baileys' | 'web.js' = 'web.js'): Promise<ServiceResponse> {
     const socket = provider === 'baileys' ? this.baileysSocket : this.webjsSocket;
     
     if (!socket || !socket.connected) {
@@ -199,7 +235,7 @@ class WhatsAppService {
     }
 
     return new Promise((resolve, reject) => {
-      socket.emit('get_chats', { connectionId }, (response: any) => {
+      socket.emit('get_chats', { connectionId }, (response: ServiceResponse) => {
         if (response.success) {
           resolve(response);
         } else {
@@ -210,14 +246,14 @@ class WhatsAppService {
   }
 
   // Event listeners
-  on(event: string, callback: Function) {
+  on(event: string, callback: Function): void {
     if (!this.eventListeners.has(event)) {
       this.eventListeners.set(event, []);
     }
     this.eventListeners.get(event)!.push(callback);
   }
 
-  off(event: string, callback: Function) {
+  off(event: string, callback: Function): void {
     const listeners = this.eventListeners.get(event);
     if (listeners) {
       const index = listeners.indexOf(callback);
@@ -243,7 +279,7 @@ class WhatsAppService {
   }
 
   // Cleanup
-  destroy() {
+  destroy(): void {
     if (this.baileysSocket) {
       this.baileysSocket.disconnect();
       this.baileysSocket = null;
