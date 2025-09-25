@@ -1,13 +1,55 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+// Add better error handling and validation for environment variables
+const supabaseUrl = (import.meta as any).env.VITE_SUPABASE_URL;
+const supabaseAnonKey = (import.meta as any).env.VITE_SUPABASE_ANON_KEY;
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Missing Supabase environment variables');
+// Validate that required environment variables are present
+if (!supabaseUrl) {
+  console.error('Missing VITE_SUPABASE_URL environment variable');
+  throw new Error('Missing VITE_SUPABASE_URL environment variable. Please check your .env file.');
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+if (!supabaseAnonKey) {
+  console.error('Missing VITE_SUPABASE_ANON_KEY environment variable');
+  throw new Error('Missing VITE_SUPABASE_ANON_KEY environment variable. Please check your .env file.');
+}
+
+console.log('Initializing Supabase client with URL:', supabaseUrl);
+
+// Configure Supabase client with better settings for production
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: true,
+    flowType: 'pkce'
+  },
+  global: {
+    headers: {
+      'X-Client-Info': 'chatvendas-web'
+    }
+  },
+  db: {
+    schema: 'public'
+  }
+});
+
+// Test the connection
+const testConnection = async () => {
+  try {
+    const result = await supabase.rpc('now');
+    if (result.error) {
+      console.error('Supabase connection test failed:', result.error);
+    } else {
+      console.log('Supabase connection test successful');
+    }
+  } catch (error: any) {
+    console.error('Supabase connection test error:', error);
+  }
+};
+
+testConnection();
 
 // Types for database tables
 export interface Profile {

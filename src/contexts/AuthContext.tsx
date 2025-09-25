@@ -101,6 +101,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signUp = async (email: string, password: string, name: string) => {
     setLoading(true);
     try {
+      // Validate inputs
+      if (!email || !password || !name) {
+        throw new Error('Todos os campos são obrigatórios');
+      }
+      
+      // Check if password is strong enough
+      if (password.length < 6) {
+        throw new Error('A senha deve ter pelo menos 6 caracteres');
+      }
+      
+      console.log('Attempting to sign up user:', { email, name });
+      
       const { error } = await supabase.auth.signUp({
         email,
         password,
@@ -111,10 +123,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         },
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase signup error:', error);
+        throw error;
+      }
+      
+      console.log('Signup successful for user:', email);
       toast.success('Conta criada com sucesso! Verifique seu e-mail para confirmação.');
-    } catch (error: ApiError | any) {
-      const errorMessage = error?.message || 'Erro ao criar conta';
+    } catch (error: any) {
+      console.error('Signup error:', error);
+      let errorMessage = 'Erro ao criar conta';
+      
+      // Provide more specific error messages
+      if (error?.message) {
+        errorMessage = error.message;
+      } else if (error?.status === 0) {
+        errorMessage = 'Falha na conexão. Verifique sua internet e tente novamente.';
+      } else if (error?.status === 400) {
+        errorMessage = 'Dados inválidos. Verifique as informações e tente novamente.';
+      } else if (error?.status === 403) {
+        errorMessage = 'Acesso negado. Verifique suas permissões.';
+      } else if (error?.status >= 500) {
+        errorMessage = 'Erro no servidor. Tente novamente mais tarde.';
+      }
+      
       toast.error(errorMessage);
       throw error;
     } finally {

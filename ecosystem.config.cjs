@@ -33,7 +33,9 @@ module.exports = {
         BAILEYS_PORT: 3001,
         PORT: 3001,
         SESSION_ID: 'baileys_prod_session',
-        HOST: '0.0.0.0'
+        HOST: '0.0.0.0',
+        // Add CORS configuration
+        FRONTEND_URL: process.env.FRONTEND_URL || 'http://localhost:3000'
       },
       instances: 1,
       autorestart: true,
@@ -60,7 +62,9 @@ module.exports = {
         WEBJS_PORT: 3002,
         PORT: 3002,
         SESSION_ID: 'webjs_prod_session',
-        HOST: '0.0.0.0'
+        HOST: '0.0.0.0',
+        // Add CORS configuration
+        FRONTEND_URL: process.env.FRONTEND_URL || 'http://localhost:3000'
       },
       instances: 1,
       autorestart: true,
