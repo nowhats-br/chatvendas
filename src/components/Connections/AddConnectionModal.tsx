@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { X, Loader2, Save, ArrowRight, Server, Smartphone } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useWhatsAppConnection } from '../../hooks/useWhatsAppConnection';
 import { QRCodeDisplay } from './QRCodeDisplay';
+import { query } from '../../lib/postgres';
 
 interface AddConnectionModalProps {
   isOpen: boolean;
@@ -47,18 +47,16 @@ export const AddConnectionModal: React.FC<AddConnectionModalProps> = ({ isOpen, 
     setLoading(true);
     
     try {
-      const { data, error } = await supabase
-        .from('whatsapp_connections')
-        .insert({
-          name: name.trim(),
-          api_provider: apiProvider,
-          status: 'connecting',
-          created_by: user.id
-        })
-        .select()
-        .single();
+      const result = await query(
+        'INSERT INTO whatsapp_connections (name, api_provider, status, created_by) VALUES ($1, $2, $3, $4) RETURNING *',
+        [name.trim(), apiProvider, 'connecting', user.id]
+      );
       
-      if (error) throw error;
+      if (!result.rows || result.rows.length === 0) {
+        throw new Error('Falha ao criar conexão');
+      }
+      
+      const data = result.rows[0];
       
       // Armazenar o ID da conexão e criar conexão real
       setConnectionId(data.id);
@@ -97,15 +95,12 @@ export const AddConnectionModal: React.FC<AddConnectionModalProps> = ({ isOpen, 
     
     try {
       // Atualizar status da conexão no banco
-      const { error } = await supabase
-        .from('whatsapp_connections')
-        .update({ 
-          status: 'connected',
-          connected_at: new Date().toISOString()
-        })
-        .eq('id', connectionId);
+      await query(
+        'UPDATE whatsapp_connections SET status = $1, connected_at = $2 WHERE id = $3',
+        ['connected', new Date().toISOString(), connectionId]
+      );
       
-      if (error) throw error;
+
       
       toast.success("Conexão estabelecida com sucesso!");
       onSuccess();

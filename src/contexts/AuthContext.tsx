@@ -82,6 +82,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signIn = async (email: string, password: string) => {
     setLoading(true);
     try {
+      const { default: supabase } = await import('../lib/supabase');
       const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -117,6 +118,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
       
+      const { default: supabase } = await import('../lib/supabase');
       const { error } = await supabase.auth.signUp({
         email,
         password,
@@ -165,6 +167,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signOut = async () => {
     setLoading(true);
     try {
+      const { default: supabase } = await import('../lib/supabase');
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
       toast.success('Logout realizado com sucesso!');
