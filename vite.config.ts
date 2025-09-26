@@ -5,7 +5,14 @@ export default defineConfig({
   plugins: [react()],
   
   optimizeDeps: {
-    include: ['react-is', 'recharts', 'lucide-react']
+    include: ['react-is', 'recharts', 'lucide-react'],
+    exclude: ['pg', 'pg-native']
+  },
+  
+  build: {
+    rollupOptions: {
+      external: ['pg', 'pg-native']
+    }
   },
   
   resolve: {

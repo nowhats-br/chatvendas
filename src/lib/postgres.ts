@@ -1,14 +1,5 @@
-import { Pool } from 'pg';
-
-// Configuração da conexão com o PostgreSQL
-const pool = new Pool({
-  user: process.env.POSTGRES_USER || 'postgres',
-  password: process.env.POSTGRES_PASSWORD,
-  host: process.env.POSTGRES_HOST || 'localhost',
-  port: parseInt(process.env.POSTGRES_PORT || '5432'),
-  database: process.env.POSTGRES_DATABASE || 'chatvendas',
-  ssl: process.env.POSTGRES_SSL === 'true' ? { rejectUnauthorized: false } : undefined,
-});
+// Interface para o perfil do usuário - sem dependência direta do pg
+// O módulo pg será usado apenas no backend
 
 // Interface para o perfil do usuário
 export interface Profile {
@@ -21,55 +12,29 @@ export interface Profile {
   updated_at: string;
 }
 
-// Função para executar queries
+// Função para executar queries - implementação simulada para o frontend
 export async function query(text: string, params?: any[]) {
-  try {
-    const start = Date.now();
-    const res = await pool.query(text, params);
-    const duration = Date.now() - start;
-    console.log('Executed query', { text, duration, rows: res.rowCount });
-    return res;
-  } catch (error) {
-    console.error('Error executing query', error);
-    throw error;
-  }
+  console.log('Query simulada no frontend:', { text, params });
+  // No frontend, esta função fará chamadas API para o backend
+  throw new Error('Função query() deve ser chamada apenas no backend');
 }
 
-// Função para obter um perfil de usuário
+// Função para obter um perfil de usuário - implementação simulada para o frontend
 export async function getProfile(userId: string): Promise<Profile | null> {
-  try {
-    const result = await query(
-      'SELECT * FROM profiles WHERE id = $1',
-      [userId]
-    );
-    return result.rows[0] || null;
-  } catch (error) {
-    console.error('Error fetching profile:', error);
-    return null;
-  }
+  console.log('Obtendo perfil para usuário:', userId);
+  // No frontend, esta função fará uma chamada API para o backend
+  return null;
 }
 
-// Função para atualizar um perfil de usuário
+// Função para atualizar um perfil de usuário - implementação simulada para o frontend
 export async function updateProfile(userId: string, updates: Partial<Profile>) {
-  const keys = Object.keys(updates);
-  const values = Object.values(updates);
-  
-  // Construir a query dinamicamente
-  const setClause = keys.map((key, i) => `${key} = $${i + 2}`).join(', ');
-  const query = `UPDATE profiles SET ${setClause}, updated_at = NOW() WHERE id = $1 RETURNING *`;
-  
-  try {
-    const result = await pool.query(query, [userId, ...values]);
-    return { data: result.rows[0], error: null };
-  } catch (error) {
-    console.error('Error updating profile:', error);
-    return { data: null, error };
-  }
+  console.log('Atualizando perfil para usuário:', userId, updates);
+  // No frontend, esta função fará uma chamada API para o backend
+  return { data: null, error: null };
 }
 
 export default {
   query,
   getProfile,
-  updateProfile,
-  pool
+  updateProfile
 };
