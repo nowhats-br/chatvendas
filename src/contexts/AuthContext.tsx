@@ -4,6 +4,9 @@ import { supabase, Profile } from '../lib/supabase';
 import { ApiError } from '../types';
 import toast from 'react-hot-toast';
 
+// Verificar se estamos em ambiente de produção
+const isProduction = import.meta.env.VITE_NODE_ENV === 'production';
+
 interface AuthContextType {
   user: User | null;
   profile: Profile | null;
@@ -117,7 +120,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
       
-      const { default: supabase } = await import('../lib/supabase');
+      // Usar a importação estática em vez da dinâmica
       const { error } = await supabase.auth.signUp({
         email,
         password,
@@ -166,7 +169,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signOut = async () => {
     setLoading(true);
     try {
-      const { default: supabase } = await import('../lib/supabase');
+      // Usar a importação estática em vez da dinâmica
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
       toast.success('Logout realizado com sucesso!');
