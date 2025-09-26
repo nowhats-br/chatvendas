@@ -375,13 +375,11 @@ io.on('connection', (socket) => {
             qrCodeData = null;
             isConnecting = false;
             
-            if (io) {
-                io.emit('connection_status', {
-                    provider: 'baileys',
-                    status: connectionStatus,
-                    timestamp: new Date().toISOString()
-                });
-            }
+            io.emit('connection_status', {
+                provider: 'baileys',
+                status: connectionStatus,
+                timestamp: new Date().toISOString()
+            });
         } catch (error) {
             logger.error('Erro ao desconectar via Socket.IO:', error);
         }

@@ -149,9 +149,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       setProfile(prev => prev ? { ...prev, ...updates } : null);
       toast.success('Perfil atualizado com sucesso!');
-    } catch (error: ApiError | any) {
-      const errorMessage = error?.message || 'Erro ao atualizar perfil';
-      toast.error(errorMessage);
+    } catch (error: any) {
+      toast.error(error.message || 'Erro ao atualizar perfil');
       throw error;
     }
   };

@@ -15,18 +15,6 @@ export interface ConnectionStatus {
   provider: 'baileys' | 'web.js';
 }
 
-export interface ConnectionCreatedData {
-  connectionId: string;
-  provider: 'baileys' | 'web.js';
-  status: string;
-}
-
-export interface ConnectError {
-  message: string;
-  type: string;
-  description?: string;
-}
-
 export interface WhatsAppConnectionHook {
   qrCode: string | null;
   connectionStatus: ConnectionStatus | null;
@@ -182,3 +170,15 @@ export const useWhatsAppConnection = (): WhatsAppConnectionHook => {
     clearQRCode
   };
 };
+
+export interface ConnectionCreatedData {
+  connectionId: string;
+  provider: 'baileys' | 'web.js';
+  status: string;
+}
+
+export interface ConnectError {
+  message: string;
+  type: string;
+  description?: string;
+}

@@ -5,7 +5,6 @@ import { Loader2, Hash, Lock, User } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import toast from 'react-hot-toast';
-import { ApiError } from '../../types';
 
 interface MonitoredChannel {
   id: string;
@@ -32,9 +31,8 @@ export const InternalChatMonitoring: React.FC = () => {
       const { data, error } = await supabase.rpc('get_all_internal_channels_with_last_message');
       if (error) throw error;
       setChannels(data || []);
-    } catch (error: ApiError | any) {
-      const errorMessage = error?.message || 'Erro ao buscar conversas';
-      console.error('Erro ao buscar conversas:', errorMessage);
+    } catch (error: any) {
+      toast.error(error.message || "Erro ao carregar canais para monitoramento.");
     } finally {
       setLoading(false);
     }

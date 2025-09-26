@@ -5,7 +5,6 @@ import { X, Loader2, Save, ArrowRight, Server, Smartphone } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useWhatsAppConnection } from '../../hooks/useWhatsAppConnection';
 import { QRCodeDisplay } from './QRCodeDisplay';
-import { ApiError } from '../../types';
 
 interface AddConnectionModalProps {
   isOpen: boolean;
@@ -66,10 +65,8 @@ export const AddConnectionModal: React.FC<AddConnectionModalProps> = ({ isOpen, 
       await createConnection(apiProvider, data.id);
       setStep(2);
 
-    } catch (err: ApiError | any) {
-      const errorMessage = err?.message || 'Erro ao criar conexão';
-      toast.error(errorMessage);
-      setError(errorMessage);
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao criar conexão.");
     } finally {
       setLoading(false);
     }
@@ -113,9 +110,8 @@ export const AddConnectionModal: React.FC<AddConnectionModalProps> = ({ isOpen, 
       toast.success("Conexão estabelecida com sucesso!");
       onSuccess();
       handleClose();
-    } catch (err: ApiError | any) {
-      const errorMessage = err?.message || 'Erro ao desconectar';
-      toast.error(errorMessage);
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao finalizar conexão.");
     } finally {
       setLoading(false);
     }

@@ -41,20 +41,6 @@ export interface ServiceResponse {
   error?: string;
 }
 
-export interface ChatData {
-  id: string;
-  name: string;
-  lastMessage?: string;
-  timestamp?: number;
-  unreadCount?: number;
-  isGroup?: boolean;
-}
-
-export interface ChatsListData {
-  chats: ChatData[];
-  provider?: string;
-}
-
 export type ApiProvider = 'baileys' | 'web.js';
 
 class WhatsAppService {
@@ -294,3 +280,17 @@ class WhatsAppService {
 
 // Singleton instance
 export const whatsappService = new WhatsAppService();
+
+export interface ChatData {
+  id: string;
+  name: string;
+  lastMessage?: string;
+  timestamp?: number;
+  unreadCount?: number;
+  isGroup?: boolean;
+}
+
+export interface ChatsListData {
+  chats: ChatData[];
+  provider?: string;
+}

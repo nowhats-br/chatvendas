@@ -3,7 +3,6 @@ import { supabase, Task, Profile, Contact } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { X, Save, Loader2, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { ApiError } from '../../types';
 
 interface TaskModalProps {
   isOpen: boolean;
@@ -71,9 +70,8 @@ export const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSave, t
       if (error) throw error;
       toast.success(`Tarefa ${task ? 'atualizada' : 'criada'} com sucesso!`);
       onSave();
-    } catch (error: ApiError | any) {
-      const errorMessage = error?.message || 'Erro ao salvar tarefa';
-      toast.error(errorMessage);
+    } catch (error: any) {
+      toast.error(error.message || 'Falha ao salvar tarefa.');
     } finally {
       setLoading(false);
     }
@@ -88,9 +86,8 @@ export const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSave, t
       if (error) throw error;
       toast.success("Tarefa apagada com sucesso!");
       onSave();
-    } catch (error: ApiError | any) {
-      const errorMessage = error?.message || 'Erro ao excluir tarefa';
-      toast.error(errorMessage);
+    } catch (error: any) {
+      toast.error(error.message || 'Falha ao apagar tarefa.');
     } finally {
       setLoading(false);
     }

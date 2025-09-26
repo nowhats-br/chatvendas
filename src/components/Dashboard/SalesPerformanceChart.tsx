@@ -22,9 +22,9 @@ export const SalesPerformanceChart: React.FC = () => {
       if (error) {
         console.error(error);
       } else {
-        const formattedData = data.map((item: ChartDataItem) => ({
+        const formattedData = data.map((item: any) => ({
           ...item,
-          date: format(new Date(item.date as string), 'dd/MM'),
+          date: format(new Date(item.date), 'dd/MM'),
         }));
         setData(formattedData);
       }

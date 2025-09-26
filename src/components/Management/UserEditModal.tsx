@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { supabase, Profile, Queue, UserQueue } from '../../lib/supabase';
 import { X, Save, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { ApiError } from '../../types';
 
 interface UserEditModalProps {
   isOpen: boolean;
@@ -63,11 +62,9 @@ export const UserEditModal: React.FC<UserEditModalProps> = ({ isOpen, onClose, o
 
       toast.success("Usuário atualizado com sucesso!");
       onSave();
-    } catch (error: ApiError | any) {
-      const errorMessage = error?.message || 'Erro ao salvar usuário';
-      toast.error(errorMessage);
-    }
-    finally {
+    } catch (error: any) {
+      toast.error(error.message || "Falha ao salvar alterações.");
+    } finally {
       setLoading(false);
     }
   };

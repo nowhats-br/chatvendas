@@ -233,15 +233,13 @@ export const UserManagement: React.FC<UserManagementProps> = ({ activeTab }) => 
             <div className="border-b border-gray-200 dark:border-gray-700 mb-6">
                 <nav className="-mb-px flex space-x-6">
                     {tabs.map(tab => (
-                        <button key={tab.id} onClick={() => setCurrentTab(tab.id as 'users' | 'queues' | 'teams')}
+                        <button key={tab.id} onClick={() => setCurrentTab(tab.id as any)}
                             className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center space-x-2 ${
                                 currentTab === tab.id
                                 ? 'border-green-500 text-green-600'
                                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                             }`}>
-                            {tab.id === 'users' && <Users size={18} />}
-                            {tab.id === 'queues' && <FolderOpen size={18} />}
-                            {tab.id === 'teams' && <TeamIcon size={18} />}
+                            <tab.icon size={18} />
                             <span>{tab.label}</span>
                         </button>
                     ))}

@@ -22,7 +22,7 @@ const logger = pino({
 });
 
 // Configurações
-const PORT = process.env.WEBJS_PORT || 3003; // Mudando para 3003 para evitar conflito
+const PORT = process.env.WEBJS_PORT || 3002;
 const NODE_ENV = process.env.NODE_ENV || 'development';
 const SESSION_ID = process.env.SESSION_ID || uuidv4();
 
