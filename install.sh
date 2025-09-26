@@ -138,13 +138,12 @@ if skip_if_completed "system_update"; then
     true # Etapa já executada
 else
     log "Atualizando lista de pacotes..."
-    sudo apt update
 
     if [[ "$SKIP_UPGRADE" =~ ^[Yy]$ ]]; then
         warning "Pulando atualização completa do sistema (modo rápido)"
     else
         log "Atualizando sistema completo..."
-        sudo apt upgrade -y
+
     fi
     mark_checkpoint "system_update"
 fi

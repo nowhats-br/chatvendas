@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, Paperclip, Mic, Smile, ArrowLeft, MoreVertical, RotateCcw, CheckCircle, ArrowRightLeft, CalendarPlus, ShoppingCart } from 'lucide-react';
+import { Send, Paperclip, Mic, Smile, ArrowLeft, MoreVertical, RotateCcw, CheckCircle, ArrowRightLeft, CalendarPlus, ShoppingCart, Loader2 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase, Ticket, Message } from '../../lib/supabase';
 import { TicketSidebar } from './TicketSidebar';
-import { MessageBubble } from '../MessageBubble';
+import { MessageBubble } from './MessageBubble';
 import { QuickReplies } from './QuickReplies';
 import { SalesModal } from '../Sales/SalesModal';
 import toast from 'react-hot-toast';

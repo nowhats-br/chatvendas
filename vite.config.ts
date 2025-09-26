@@ -12,5 +12,32 @@ export default defineConfig({
     alias: {
       'react-is': 'react-is'
     }
+  },
+  
+  server: {
+    host: true,
+    port: 3000,
+    strictPort: false,
+    // Configure CORS for development
+    cors: {
+      origin: true,
+      credentials: true
+    }
+  },
+  
+  preview: {
+    host: true,
+    port: 3000,
+    strictPort: false,
+    // Configure CORS for preview
+    cors: {
+      origin: true,
+      credentials: true
+    }
+  },
+  
+  // ADDITIONAL CORS CONFIGURATION FOR PRODUCTION
+  define: {
+    global: 'globalThis',
   }
 });

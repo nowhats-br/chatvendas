@@ -1,12 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { Zap } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface QuickReply {
   id: string;
   title: string;
   content: string;
   shortcut?: string;
+  usage_count?: number;
+  is_global?: boolean;
+  user_id?: string;
 }
 
 interface QuickRepliesProps {
@@ -16,17 +20,21 @@ interface QuickRepliesProps {
 export const QuickReplies: React.FC<QuickRepliesProps> = ({ onSelectReply }) => {
   const [quickReplies, setQuickReplies] = useState<QuickReply[]>([]);
   const [showReplies, setShowReplies] = useState(false);
+  const { user } = useAuth();
 
   useEffect(() => {
     fetchQuickReplies();
-  }, []);
+  }, [user]);
 
   const fetchQuickReplies = async () => {
+    if (!user) return;
+    
     try {
+      // Buscar mensagens rápidas globais e do usuário
       const { data, error } = await supabase
         .from('quick_messages')
         .select('*')
-        .or('is_global.eq.true,user_id.eq.auth.uid()')
+        .or(`is_global.eq.true,user_id.eq.${user.id}`)
         .order('usage_count', { ascending: false })
         .limit(10);
 
@@ -43,10 +51,16 @@ export const QuickReplies: React.FC<QuickRepliesProps> = ({ onSelectReply }) => 
 
     // Increment usage count
     try {
+      const newCount = (reply.usage_count || 0) + 1;
       await supabase
         .from('quick_messages')
-        .update({ usage_count: reply.usage_count + 1 })
+        .update({ usage_count: newCount })
         .eq('id', reply.id);
+      
+      // Atualizar localmente também
+      setQuickReplies(prev => prev.map(qr => 
+        qr.id === reply.id ? {...qr, usage_count: newCount} : qr
+      ));
     } catch (error) {
       console.error('Error updating usage count:', error);
     }

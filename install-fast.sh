@@ -67,9 +67,6 @@ if ! ping -c 1 8.8.8.8 &> /dev/null; then
 else
     # Atualizar lista de pacotes com timeout
     log "Atualizando lista de pacotes (com timeout)..."
-    timeout 60 apt update -qq || {
-        warn "Timeout na atualização. Continuando com cache existente..."
-    }
 fi
 
 # Instalar dependências básicas (mínimas) com retry

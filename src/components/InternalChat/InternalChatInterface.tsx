@@ -66,7 +66,7 @@ export const InternalChatInterface: React.FC<InternalChatInterfaceProps> = ({ se
         user_id: user.id,
         content: newMessage,
         created_at: new Date().toISOString(),
-        user: profile
+        user: profile || undefined
     };
     setMessages(current => [...current, tempMessage]);
     setNewMessage('');
@@ -94,7 +94,7 @@ export const InternalChatInterface: React.FC<InternalChatInterfaceProps> = ({ se
       <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-3 flex items-center space-x-3">
         {selectedChannel.channel_type === 'public' && <Hash className="text-gray-400" />}
         {selectedChannel.channel_type === 'private' && <Lock className="text-gray-400" />}
-        {selectedChannel.channel_type === 'direct' && <User className="text-gray-400" />}
+        {selectedChannel.channel_type === 'direct' && <Users className="text-gray-400" />}
         <div>
           <h3 className="font-medium text-gray-900 dark:text-gray-100">{selectedChannel.name}</h3>
           <p className="text-sm text-gray-500 dark:text-gray-400">{selectedChannel.description}</p>

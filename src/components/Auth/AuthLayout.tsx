@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { MessageSquare, Mail, Lock, User, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import toast from 'react-hot-toast';
 
 export const AuthLayout: React.FC = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -21,8 +22,14 @@ export const AuthLayout: React.FC = () => {
       } else {
         await signUp(formData.email, formData.password, formData.name);
       }
-    } catch (error) {
-      // Error is handled in the auth context
+    } catch (error: any) {
+      // Error is handled in the auth context, but we can provide additional feedback here
+      console.error('Authentication error:', error);
+      
+      // If it's a network error, show a more user-friendly message
+      if (error?.message?.includes('Failed to fetch') || error?.status === 0) {
+        toast.error('Não foi possível conectar ao servidor. Verifique sua conexão com a internet e tente novamente.');
+      }
     }
   };
 

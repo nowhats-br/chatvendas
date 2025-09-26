@@ -1,13 +1,77 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+// Add better error handling and validation for environment variables
+const supabaseUrl = (import.meta as any).env.VITE_SUPABASE_URL;
+const supabaseAnonKey = (import.meta as any).env.VITE_SUPABASE_ANON_KEY;
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Missing Supabase environment variables');
+// Validate that required environment variables are present
+if (!supabaseUrl) {
+  console.error('Missing VITE_SUPABASE_URL environment variable');
+  throw new Error('Missing VITE_SUPABASE_URL environment variable. Please check your .env file.');
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+if (!supabaseAnonKey) {
+  console.error('Missing VITE_SUPABASE_ANON_KEY environment variable');
+  throw new Error('Missing VITE_SUPABASE_ANON_KEY environment variable. Please check your .env file.');
+}
+
+console.log('Initializing Supabase client with URL:', supabaseUrl);
+
+// Configure Supabase client with better settings for production
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: true,
+    flowType: 'pkce'
+  },
+  global: {
+    headers: {
+      'X-Client-Info': 'chatvendas-web'
+    }
+  },
+  db: {
+    schema: 'public'
+  },
+  // ADD TIMEOUT CONFIGURATION TO PREVENT CONNECTION HANGING
+  realtime: {
+    timeout: 10000, // 10 seconds
+  }
+});
+
+// Test the connection with better error handling
+const testConnection = async () => {
+  try {
+    console.log('Testing Supabase connection...');
+    // Use a safer test method
+    const { data, error } = await supabase.from('profiles').select('id').limit(1);
+    
+    if (error) {
+      console.error('Supabase connection test failed:', error);
+      // Check if it's a network error
+      if (error.message.includes('Failed to fetch') || error.message.includes('fetch')) {
+        console.error('This appears to be a network connectivity issue. Please check:');
+        console.error('1. Your internet connection');
+        console.error('2. Firewall settings');
+        console.error('3. If Supabase is accessible from your location');
+      }
+    } else {
+      console.log('Supabase connection test successful');
+      console.log('Test query result:', data);
+    }
+  } catch (error: any) {
+    console.error('Supabase connection test error:', error);
+    if (error.name === 'TypeError' && error.message.includes('fetch')) {
+      console.error('Network error detected. This is likely due to:');
+      console.error('- Internet connectivity issues');
+      console.error('- Firewall blocking the connection');
+      console.error('- DNS resolution problems');
+      console.error('- Supabase service temporary unavailability');
+    }
+  }
+};
+
+testConnection();
 
 // Types for database tables
 export interface Profile {

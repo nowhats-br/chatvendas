@@ -1,0 +1,24 @@
+{
+  "defaultCommitMessage": "Auto-commit from Qoder IDE",
+  "branch": "main",
+  "remote": "origin",
+  "openGitHubDesktop": true,
+  "filePatterns": [
+    "*.ts",
+    "*.tsx",
+    "*.js",
+    "*.jsx",
+    "*.json",
+    "*.md",
+    "*.sh",
+    "*.ps1",
+    "*.bat",
+    "*.cjs"
+  ],
+  "ignorePatterns": [
+    "node_modules/",
+    "dist/",
+    "*.log",
+    ".env"
+  ]
+}
