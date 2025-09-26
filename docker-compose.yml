@@ -63,6 +63,26 @@ services:
       - ./server/webjs-service/.wwebjs_auth:/app/.wwebjs_auth
     networks:
       - chatvendas-network
+      
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: chatvendas-frontend
+    restart: always
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+      - webjs
+    environment:
+      VITE_SUPABASE_URL: ${VITE_SUPABASE_URL}
+      VITE_SUPABASE_ANON_KEY: ${VITE_SUPABASE_ANON_KEY}
+      VITE_BAILEYS_URL: http://backend:3001
+      VITE_WEBJS_URL: http://webjs:3002
+      VITE_NODE_ENV: production
+    networks:
+      - chatvendas-network
 
 networks:
   chatvendas-network:
